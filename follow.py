@@ -12,35 +12,30 @@ users_celebrity = ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian'
                    'beyonce', 'kyliejennr', 'katyperry', 'therock']
 users = users_celebrity
 
+reporter.set_version("follow-ff-2.0")
 
-def main():
-    reporter.set_version("follow-ff-2.0")
+session = InstaPy(
+    headless_browser=True,
+    bypass_suspicious_attempt=True,
+    use_firefox=True,
+    **reporter.Arguments().all()
+)
 
-    session = InstaPy(
-        headless_browser=True,
-        bypass_suspicious_attempt=True,
-        use_firefox=True,
-        **reporter.Arguments().all()
-    )
+with smart_run(session):
+    while True:
+        for user in users:
+            session.follow_by_list([user],
+                                   times=9223372036854775807,
+                                   sleep_delay=1,
+                                   interact=False)
+            time.sleep(SLEEP_BETWEEN_EACH_FOLLOW)
 
-    with smart_run(session):
-        while True:
-            for user in users:
-                session.follow_by_list([user],
-                                       times=9223372036854775807,
-                                       sleep_delay=1,
-                                       interact=False)
-                time.sleep(SLEEP_BETWEEN_EACH_FOLLOW)
+        reporter.log("[sleep {0} seconds before unfollowing]".format(SLEEP_AFTER_ALL_FOLLOW))
+        time.sleep(SLEEP_AFTER_ALL_FOLLOW)
 
-            reporter.log("[sleep {0} seconds before unfollowing]".format(SLEEP_AFTER_ALL_FOLLOW))
-            time.sleep(SLEEP_AFTER_ALL_FOLLOW)
-
-            for user in users:
-                session.unfollow_users(customList=(True, [user], "all"),
-                                       style="RANDOM",
-                                       unfollow_after=1,
-                                       sleep_delay=1)
-                time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
-
-
-main()
+        for user in users:
+            session.unfollow_users(customList=(True, [user], "all"),
+                                   style="RANDOM",
+                                   unfollow_after=1,
+                                   sleep_delay=1)
+            time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
