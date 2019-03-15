@@ -17,21 +17,19 @@ def main():
         **reporter.Arguments().all()  # dump all arguments from command line
     )
 
-    reporter.log("[check-in]")  # reporter.log() prints in both terminal and server
-
     with smart_run(session):
         while True:
+            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
             session.like_by_tags(['love'], amount=1, interact=False)
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
 
+            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
             session.like_by_tags(['instagood'], amount=1, interact=False)
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
 
+            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
             session.like_by_tags(['photooftheday'], amount=1, interact=False)
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
 
-            session.like_by_tags(['fashion'], amount=1, interact=False)
             time.sleep(SLEEP_BETWEEN_EACH_LIKE)
+            session.like_by_tags(['fashion'], amount=1, interact=False)
 
 
 main()

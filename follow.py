@@ -23,8 +23,6 @@ def main():
         **reporter.Arguments().all()
     )
 
-    reporter.log("[check-in]")
-
     with smart_run(session):
         while True:
             for user in users:
@@ -45,5 +43,4 @@ def main():
                 time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
 
 
-# call main function
 main()
