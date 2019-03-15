@@ -62,8 +62,7 @@ class Reporter:
         self.fields.update(fields)
 
     def send(self, buffer):
-        # print("[report status]\n")
-        # buffer = buffer.rstrip()
+        buffer = buffer.rstrip()
         if buffer == "":
             return
 
