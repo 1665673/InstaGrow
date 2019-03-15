@@ -15,8 +15,8 @@ users = users_celebrity
 reporter.set_version("follow-ff-2.0")
 
 session = InstaPy(
-    headless_browser=True,
     bypass_suspicious_attempt=True,
+    headless_browser=True,
     use_firefox=True,
     **reporter.Arguments().all()
 )

@@ -8,14 +8,12 @@ SLEEP_BETWEEN_EACH_LIKE = 20
 
 reporter.set_version("like-ff-2.0")  # set a version tag
 
-session = InstaPy(username=insta_username,
-                  password=insta_password,
-                  headless_browser=True,
-                  use_firefox=True,
-                  proxy_address="zproxy.lum-superproxy.io",
-                  proxy_port=22225,
-                  proxy_username="lum-customer-hl_648f8412-zone-static-ip-185.217.61.22",
-                  proxy_password="9y4lv38oag4e")
+session = InstaPy(
+    bypass_suspicious_attempt=True,
+    headless_browser=True,
+    use_firefox=True,
+    **reporter.Arguments().all()
+)
 
 with smart_run(session):
     while True:
