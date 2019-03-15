@@ -1,10 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/follow.py" beforeDir="false" afterPath="$PROJECT_DIR$/follow.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/like.py" beforeDir="false" afterPath="$PROJECT_DIR$/like.py" afterDir="false" />
-    </list>
+    <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -16,8 +13,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/like.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="165">
-              <caret line="11" column="35" selection-start-line="11" selection-start-column="35" selection-end-line="11" selection-end-column="35" />
+            <state>
+              <caret selection-end-line="30" />
               <folding>
                 <element signature="e#0#27#0" expanded="true" />
               </folding>
@@ -37,8 +34,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/follow.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="255">
-              <caret line="17" column="35" selection-start-line="17" selection-start-column="35" selection-end-line="17" selection-end-column="35" />
+            <state relative-caret-position="330">
+              <caret line="22" lean-forward="true" selection-start-line="22" selection-end-line="22" />
               <folding>
                 <element signature="e#0#27#0" expanded="true" />
               </folding>
@@ -73,7 +70,7 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="190" />
+    <option name="x" value="232" />
     <option name="y" value="68" />
     <option name="width" value="1400" />
     <option name="height" value="907" />
@@ -125,16 +122,15 @@
       <option name="presentableId" value="Default" />
       <updated>1552658138343</updated>
       <workItem from="1552658140694" duration="95000" />
-      <workItem from="1552661379684" duration="5568000" />
+      <workItem from="1552661379684" duration="5691000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="5663000" />
+    <option name="totallyTimeSpent" value="5786000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="190" y="68" width="1400" height="907" extended-state="0" />
-    <editor active="true" />
+    <frame x="232" y="68" width="1400" height="907" extended-state="0" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2533137" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
@@ -187,8 +183,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/like.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="165">
-          <caret line="11" column="35" selection-start-line="11" selection-start-column="35" selection-end-line="11" selection-end-column="35" />
+        <state>
+          <caret selection-end-line="30" />
           <folding>
             <element signature="e#0#27#0" expanded="true" />
           </folding>
@@ -197,8 +193,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/follow.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="255">
-          <caret line="17" column="35" selection-start-line="17" selection-start-column="35" selection-end-line="17" selection-end-column="35" />
+        <state relative-caret-position="330">
+          <caret line="22" lean-forward="true" selection-start-line="22" selection-end-line="22" />
           <folding>
             <element signature="e#0#27#0" expanded="true" />
           </folding>
