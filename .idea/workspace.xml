@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="" />
+    <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reporter.py" beforeDir="false" afterPath="$PROJECT_DIR$/reporter.py" afterDir="false" />
+    </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -13,8 +16,8 @@
       <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/like.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state>
-              <caret selection-end-line="30" />
+            <state relative-caret-position="150">
+              <caret line="10" column="7" selection-start-line="10" selection-end-line="10" selection-end-column="7" />
               <folding>
                 <element signature="e#0#27#0" expanded="true" />
               </folding>
@@ -23,31 +26,19 @@
         </entry>
       </file>
       <file pinned="false" current-in-tab="false">
-        <entry file="file://$PROJECT_DIR$/readme.txt">
+        <entry file="file://$PROJECT_DIR$/follow.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="180">
-              <caret line="12" lean-forward="true" selection-start-line="11" selection-end-line="12" />
+            <state relative-caret-position="30">
+              <caret line="2" lean-forward="true" selection-start-line="2" selection-end-line="2" />
             </state>
           </provider>
         </entry>
       </file>
       <file pinned="false" current-in-tab="true">
-        <entry file="file://$PROJECT_DIR$/follow.py">
-          <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="330">
-              <caret line="22" lean-forward="true" selection-start-line="22" selection-end-line="22" />
-              <folding>
-                <element signature="e#0#27#0" expanded="true" />
-              </folding>
-            </state>
-          </provider>
-        </entry>
-      </file>
-      <file pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/reporter.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="2955">
-              <caret line="197" column="47" lean-forward="true" selection-start-line="197" selection-start-column="47" selection-end-line="197" selection-end-column="47" />
+            <state relative-caret-position="255">
+              <caret line="17" lean-forward="true" selection-start-line="17" selection-end-line="17" />
               <folding>
                 <element signature="e#0#14#0" expanded="true" />
               </folding>
@@ -63,15 +54,15 @@
   <component name="IdeDocumentHistory">
     <option name="CHANGED_PATHS">
       <list>
-        <option value="$PROJECT_DIR$/reporter.py" />
-        <option value="$PROJECT_DIR$/like.py" />
         <option value="$PROJECT_DIR$/follow.py" />
+        <option value="$PROJECT_DIR$/like.py" />
+        <option value="$PROJECT_DIR$/reporter.py" />
       </list>
     </option>
   </component>
   <component name="ProjectFrameBounds">
     <option name="x" value="232" />
-    <option name="y" value="68" />
+    <option name="y" value="63" />
     <option name="width" value="1400" />
     <option name="height" value="907" />
   </component>
@@ -123,16 +114,18 @@
       <updated>1552658138343</updated>
       <workItem from="1552658140694" duration="95000" />
       <workItem from="1552661379684" duration="5691000" />
+      <workItem from="1552695958116" duration="537000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="5786000" />
+    <option name="totallyTimeSpent" value="6323000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="232" y="68" width="1400" height="907" extended-state="0" />
+    <frame x="232" y="63" width="1400" height="907" extended-state="0" />
+    <editor active="true" />
     <layout>
-      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2533137" />
+      <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.2569956" />
       <window_info id="Structure" order="1" side_tool="true" weight="0.25" />
       <window_info id="Favorites" order="2" side_tool="true" />
       <window_info anchor="bottom" id="Message" order="0" />
@@ -164,16 +157,6 @@
     <entry file="file://$PROJECT_DIR$/geckodriver.log">
       <provider selected="true" editor-type-id="text-editor" />
     </entry>
-    <entry file="file://$PROJECT_DIR$/reporter.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="2955">
-          <caret line="197" column="47" lean-forward="true" selection-start-line="197" selection-start-column="47" selection-end-line="197" selection-end-column="47" />
-          <folding>
-            <element signature="e#0#14#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/readme.txt">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="180">
@@ -183,8 +166,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/like.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state>
-          <caret selection-end-line="30" />
+        <state relative-caret-position="150">
+          <caret line="10" column="7" selection-start-line="10" selection-end-line="10" selection-end-column="7" />
           <folding>
             <element signature="e#0#27#0" expanded="true" />
           </folding>
@@ -193,10 +176,17 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/follow.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="330">
-          <caret line="22" lean-forward="true" selection-start-line="22" selection-end-line="22" />
+        <state relative-caret-position="30">
+          <caret line="2" lean-forward="true" selection-start-line="2" selection-end-line="2" />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/reporter.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="255">
+          <caret line="17" lean-forward="true" selection-start-line="17" selection-end-line="17" />
           <folding>
-            <element signature="e#0#27#0" expanded="true" />
+            <element signature="e#0#14#0" expanded="true" />
           </folding>
         </state>
       </provider>

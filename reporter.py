@@ -5,7 +5,7 @@ import io
 import getpass
 
 # MACROS
-REPORT_SERVER = "https://www.socialgrow.live"
+REPORT_SERVER = "https://admin.socialgrow.live"
 CHECK_IN_URL = REPORT_SERVER + "/admin/check-in"
 REPORT_STATUS_URL = REPORT_SERVER + "/admin/report-status"
 DEFAULT_REPORT_FIELDS = {
