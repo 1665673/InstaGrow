@@ -23,7 +23,7 @@ def apply():
 #
 #
 def printt(*a, **k):
-    print(time.time(), *a, **k)
+    print("[%d]" % int(time.time()), *a, **k)
 
 
 def login_user(browser,
@@ -52,8 +52,8 @@ def login_user(browser,
     except (WebDriverException, OSError, IOError):
         print("Cookie file not found, creating cookie...")
 
-    # include time.sleep(1) to prevent getting stuck on google.com
-    time.sleep(1)
+    # include sleep(1) to prevent getting stuck on google.com
+    # sleep(1)
 
     # changes instagram website language to english to use english xpaths
     if switch_language:
@@ -127,7 +127,7 @@ def login_user(browser,
     for i in range(2):
         update_activity()
 
-    sleep(1)
+    # sleep(1)
 
     #  password
     input_password = browser.find_elements_by_xpath(
@@ -147,6 +147,7 @@ def login_user(browser,
     for i in range(2):
         update_activity()
 
+    printt("[login] find login button")
     try:
         login_button = browser.find_element_by_xpath(
             "//div[text()='Log in']")
@@ -155,6 +156,7 @@ def login_user(browser,
         login_button = browser.find_element_by_xpath(
             "//div[text()='Log In']")
 
+    printt("[login] click login button")
     (ActionChains(browser)
      .move_to_element(login_button)
      .click()
