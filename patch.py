@@ -22,8 +22,12 @@ def apply():
 #
 #
 #
+time = time.time
+
+
 def printt(*a, **k):
-    print(time.time(), *a, **k)
+    global time
+    print(time(), *a, **k)
 
 
 def login_user(browser,
