@@ -163,6 +163,30 @@ def login_user(browser,
     # update server calls
     update_activity()
 
+    #
+    #
+    #
+    #
+    #
+    #
+    # check if already logged in successfully
+    # if yes, dump cookie and return true
+    try:
+        if (browser.find_element_by_xpath(
+                "//div[@class='SKguc']")):
+            pickle.dump(browser.get_cookies(), open(
+                '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+            return True
+    except Exception as e:
+        pass
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+
     printt("[login] dismiss offer")
     dismiss_get_app_offer(browser, logger)
     dismiss_notification_offer(browser, logger)
