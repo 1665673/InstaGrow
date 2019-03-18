@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/patch.py" beforeDir="false" afterPath="$PROJECT_DIR$/patch.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -25,8 +24,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/patch.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="360">
-              <caret line="26" lean-forward="true" selection-start-line="26" selection-end-line="26" />
+            <state relative-caret-position="285">
+              <caret line="19" column="1" lean-forward="true" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -86,8 +85,8 @@
     </option>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="109" />
-    <option name="y" value="37" />
+    <option name="x" value="118" />
+    <option name="y" value="31" />
     <option name="width" value="1400" />
     <option name="height" value="907" />
   </component>
@@ -142,15 +141,15 @@
       <workItem from="1552695958116" duration="957000" />
       <workItem from="1552776715362" duration="1418000" />
       <workItem from="1552907481367" duration="6100000" />
-      <workItem from="1552919755823" duration="151000" />
+      <workItem from="1552919755823" duration="754000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="14412000" />
+    <option name="totallyTimeSpent" value="15015000" />
   </component>
   <component name="ToolWindowManager">
-    <frame x="109" y="37" width="1400" height="907" extended-state="0" />
+    <frame x="118" y="31" width="1400" height="907" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info active="true" content_ui="combo" id="Project" order="0" visible="true" weight="0.26804122" />
@@ -236,8 +235,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/patch.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="360">
-          <caret line="26" lean-forward="true" selection-start-line="26" selection-end-line="26" />
+        <state relative-caret-position="285">
+          <caret line="19" column="1" lean-forward="true" selection-start-line="19" selection-start-column="1" selection-end-line="19" selection-end-column="1" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
