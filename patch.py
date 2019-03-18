@@ -45,8 +45,8 @@ def login_user(browser,
 
     # try to load cookie from username
     try:
-        for cookie in pickle.load(open('{0}{1}_cookie.pkl'
-                                               .format(logfolder, username), 'rb')):
+        for cookie in pickle.load(open(
+                '{0}{1}_cookie.pkl'.format(logfolder, username), 'rb')):
             browser.add_cookie(cookie)
             cookie_loaded = True
     except (WebDriverException, OSError, IOError):
@@ -66,14 +66,19 @@ def login_user(browser,
 
     # cookie has been LOADED, so the user SHOULD be logged in
     # check if the user IS logged in
+    printt("[login] check if already logged in")
     login_state = check_authorization(browser,
                                       username,
                                       "activity counts",
                                       logger,
                                       False)
     if login_state is True:
+        printt("[login] logged in!!!")
+        printt("[login] close possible pop-up window at fresh login")
         dismiss_notification_offer(browser, logger)
         return True
+    else:
+        printt("[login] not logged in, need to input username/password")
 
     # if user is still not logged in, then there is an issue with the cookie
     # so go create a new cookie..
@@ -82,6 +87,7 @@ def login_user(browser,
               "new cookie...".format(username))
 
     # Check if the first div is 'Create an Account' or 'Log In'
+    printt("[login] find login button, go to login page")
     try:
         login_elem = browser.find_element_by_xpath(
             "//a[text()='Log in']")
@@ -109,6 +115,7 @@ def login_user(browser,
     # wait until it navigates to the login page
     login_page_title = "Login"
     explicit_wait(browser, "TC", login_page_title, logger)
+    printt("[login] arrived login page")
 
     # wait until the 'username' input element is located and visible
     input_username_XP = "//input[@name='username']"
@@ -170,19 +177,13 @@ def login_user(browser,
     #
     #
     #
+    #   check login status one more time
     #
-    # check if already logged in successfully
-    # if yes, mark it logged in, and skip by-pass-suspicious page
-    logged_in = False
-    printt("[login] check if already logged in")
-    try:
-        if (browser.find_element_by_xpath(
-                "//div[@class='SKguc']")):
-            printt("[login] logged in!!!")
-            logged_in = True
-            return True
-    except Exception as e:
-        pass
+    login_state = check_authorization(browser,
+                                      username,
+                                      "activity counts",
+                                      logger,
+                                      False)
     #
     #
     #
@@ -191,16 +192,18 @@ def login_user(browser,
     #
     #
 
-    printt("[login] dismiss 2 possible pop-up windows at a fresh login")
-    dismiss_get_app_offer(browser, logger)
-    dismiss_notification_offer(browser, logger)
-
-    if not logged_in:
-        printt("[login] by pass suspicious")
+    if login_state:
+        printt("[login] logged in finally")
+    else:
+        printt("[login] still need to by pass suspicious page")
         if bypass_suspicious_attempt is True:
             bypass_suspicious_login(browser, bypass_with_mobile)
         # wait until page fully load
         explicit_wait(browser, "PFL", [], logger, 5)
+
+    printt("[login] close possible pop-up windows at a fresh login")
+    dismiss_get_app_offer(browser, logger)
+    dismiss_notification_offer(browser, logger)
 
     printt("[login] dump cookie")
     # Check if user is logged-in (If there's two 'nav' elements)
