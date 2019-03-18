@@ -2,11 +2,13 @@ from instapy import InstaPy
 from instapy.util import smart_run
 
 import time
+import patch
 import reporter
 
-SLEEP_BETWEEN_EACH_LIKE = 20
-
+patch.apply()
 reporter.set_version("like-ff-2.1-try")  # set a version tag
+
+SLEEP_BETWEEN_EACH_LIKE = 20
 
 session = InstaPy(
     bypass_suspicious_attempt=True,
@@ -31,4 +33,4 @@ with smart_run(session):
             session.like_by_tags(['fashion'], amount=1, interact=False)
 
         except Exception as e:
-            reporter.log(e)
+            reporter.error(e)

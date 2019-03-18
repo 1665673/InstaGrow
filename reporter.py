@@ -167,6 +167,14 @@ def log(*var, **kw):
     logger.warning(*var, **kw)
 
 
+def event(*var, **kw):
+    logger.warning("EVENT", *var, **kw)
+
+
+def error(*var, **kw):
+    logger.warning("ERROR", *var, **kw)
+
+
 # call initiate function
 init_reporter()
 
