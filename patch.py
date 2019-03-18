@@ -172,13 +172,14 @@ def login_user(browser,
     #
     #
     # check if already logged in successfully
-    # if yes, dump cookie and return true
+    # if yes, mark it logged in, and skip by-pass-suspicious page
+    logged_in = False
+    printt("[login] check if already logged in")
     try:
         if (browser.find_element_by_xpath(
                 "//div[@class='SKguc']")):
-            printt("[login] login successfully! dump cookie, return true early and save time!")
-            pickle.dump(browser.get_cookies(), open(
-                '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+            printt("[login] logged in!!!")
+            logged_in = True
             return True
     except Exception as e:
         pass
@@ -190,15 +191,16 @@ def login_user(browser,
     #
     #
 
-    printt("[login] dismiss offer")
+    printt("[login] dismiss 2 possible pop-up windows at a fresh login")
     dismiss_get_app_offer(browser, logger)
     dismiss_notification_offer(browser, logger)
 
-    printt("[login] by pass suspicious")
-    if bypass_suspicious_attempt is True:
-        bypass_suspicious_login(browser, bypass_with_mobile)
-    # wait until page fully load
-    explicit_wait(browser, "PFL", [], logger, 5)
+    if not logged_in:
+        printt("[login] by pass suspicious")
+        if bypass_suspicious_attempt is True:
+            bypass_suspicious_login(browser, bypass_with_mobile)
+        # wait until page fully load
+        explicit_wait(browser, "PFL", [], logger, 5)
 
     printt("[login] dump cookie")
     # Check if user is logged-in (If there's two 'nav' elements)
