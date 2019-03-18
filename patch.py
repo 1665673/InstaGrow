@@ -174,6 +174,7 @@ def login_user(browser,
     try:
         if (browser.find_element_by_xpath(
                 "//div[@class='SKguc']")):
+            printt("[login] login successfully! dump cookie, return true early and save time!")
             pickle.dump(browser.get_cookies(), open(
                 '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
             return True

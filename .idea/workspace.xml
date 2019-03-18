@@ -2,7 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/geckodriver.log" beforeDir="false" afterPath="$PROJECT_DIR$/geckodriver.log" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/patch.py" beforeDir="false" afterPath="$PROJECT_DIR$/patch.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -28,8 +27,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/patch.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="530">
-              <caret line="182" column="5" lean-forward="true" selection-start-line="182" selection-start-column="5" selection-end-line="182" selection-end-column="5" />
+            <state relative-caret-position="383">
+              <caret line="176" column="93" selection-start-line="176" selection-start-column="93" selection-end-line="176" selection-end-column="93" />
               <folding>
                 <element signature="e#0#10#0" expanded="true" />
               </folding>
@@ -149,12 +148,12 @@
       <workItem from="1552661379684" duration="5691000" />
       <workItem from="1552695958116" duration="957000" />
       <workItem from="1552776715362" duration="1418000" />
-      <workItem from="1552907481367" duration="5592000" />
+      <workItem from="1552907481367" duration="5912000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="13753000" />
+    <option name="totallyTimeSpent" value="14073000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="190" y="25" width="1400" height="907" extended-state="0" />
@@ -256,8 +255,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/patch.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="530">
-          <caret line="182" column="5" lean-forward="true" selection-start-line="182" selection-start-column="5" selection-end-line="182" selection-end-column="5" />
+        <state relative-caret-position="383">
+          <caret line="176" column="93" selection-start-line="176" selection-start-column="93" selection-end-line="176" selection-end-column="93" />
           <folding>
             <element signature="e#0#10#0" expanded="true" />
           </folding>
