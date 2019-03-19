@@ -11,6 +11,7 @@ def apply():
     sys.modules['instapy.login_util'].bypass_suspicious_login.__code__ = bypass_suspicious_login.__code__
     sys.modules['instapy.login_util'].dismiss_get_app_offer.__code__ = dismiss_get_app_offer.__code__
     sys.modules['instapy.login_util'].dismiss_notification_offer.__code__ = dismiss_notification_offer.__code__
+    sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
 
 
@@ -34,16 +35,19 @@ def login_user(browser,
                switch_language=True,
                bypass_suspicious_attempt=False,
                bypass_with_mobile=False):
-    printt("login_user(): enter replaced version")
+    printt("login_user(): patched version")
     """Logins the user with the given username and password"""
     assert username, 'Username not provided'
     assert password, 'Password not provided'
 
-    ig_homepage = "https://www.instagram.com"
-    web_address_navigator(browser, ig_homepage)
-    cookie_loaded = False
-
-    # try to load cookie from username
+    #
+    #
+    #
+    #   patch
+    #   load cookie before doing anything else
+    #
+    #
+    printt("[login_user]", "load cookie")
     try:
         for cookie in pickle.load(open(
                 '{0}{1}_cookie.pkl'.format(logfolder, username), 'rb')):
@@ -52,33 +56,52 @@ def login_user(browser,
     except (WebDriverException, OSError, IOError):
         print("Cookie file not found, creating cookie...")
 
+    #
+    #   patch
+    #   DIRECTLY START FROM LOGIN PAGE
+    #
+    #
+    # ig_homepage = "https://www.instagram.com"
+    ig_homepage = "https://www.instagram.com/accounts/login/"
+
+    printt("[login_user]", "go to login page:", ig_homepage)
+    web_address_navigator(browser, ig_homepage)
+    cookie_loaded = False
+
     # include sleep(1) to prevent getting stuck on google.com
     # sleep(1)
 
+    #
+    #
+    #   patch
+    #   SKIP LANGUAGE SWITCH
+    #
+    #
     # changes instagram website language to english to use english xpaths
-    if switch_language:
-        language_element_ENG = browser.find_element_by_xpath(
-            "//select[@class='hztqj']/option[text()='English']")
-        click_element(browser, language_element_ENG)
-
-    web_address_navigator(browser, ig_homepage)
-    reload_webpage(browser)
+    # printt("[login_user] switch page language to english")
+    # if switch_language:
+    #     language_element_ENG = browser.find_element_by_xpath(
+    #         "//select[@class='hztqj']/option[text()='English']")
+    #     click_element(browser, language_element_ENG)
+    #
+    # web_address_navigator(browser, ig_homepage)
+    # reload_webpage(browser)
 
     # cookie has been LOADED, so the user SHOULD be logged in
     # check if the user IS logged in
-    printt("[login] check if already logged in")
+    printt("[login_user] check if already logged in")
     login_state = check_authorization(browser,
                                       username,
                                       "activity counts",
                                       logger,
                                       False)
     if login_state is True:
-        printt("[login] logged in!!!")
-        printt("[login] close possible pop-up window at fresh login")
+        printt("[login_user] logged in!!!")
+        printt("[login_user] close possible pop-up window at fresh login")
         dismiss_notification_offer(browser, logger)
         return True
     else:
-        printt("[login] not logged in, need to input username/password")
+        printt("[login_user] not logged in, need to input username/password")
 
     # if user is still not logged in, then there is an issue with the cookie
     # so go create a new cookie..
@@ -86,27 +109,34 @@ def login_user(browser,
         print("Issue with cookie for user {}. Creating "
               "new cookie...".format(username))
 
-    # Check if the first div is 'Create an Account' or 'Log In'
-    printt("[login] find login button, go to login page")
-    try:
-        login_elem = browser.find_element_by_xpath(
-            "//a[text()='Log in']")
-    except NoSuchElementException:
-        print("Login A/B test detected! Trying another string...")
-        login_elem = browser.find_element_by_xpath(
-            "//a[text()='Log In']")
-
-    if login_elem is not None:
-        try:
-            (ActionChains(browser)
-             .move_to_element(login_elem)
-             .click()
-             .perform())
-        except MoveTargetOutOfBoundsException:
-            login_elem.click()
-
-        # update server calls
-        update_activity()
+    #
+    #
+    #   patch
+    #   NO NEED TO PROCESS THIS PAGE
+    #       SINCE WE START FROM LOGIN PAGE
+    #
+    #
+    # # Check if the first div is 'Create an Account' or 'Log In'
+    # printt("[login_user] find login button, go to login page")
+    # try:
+    #     login_elem = browser.find_element_by_xpath(
+    #         "//a[text()='Log in']")
+    # except NoSuchElementException:
+    #     print("Login A/B test detected! Trying another string...")
+    #     login_elem = browser.find_element_by_xpath(
+    #         "//a[text()='Log In']")
+    #
+    # if login_elem is not None:
+    #     try:
+    #         (ActionChains(browser)
+    #          .move_to_element(login_elem)
+    #          .click()
+    #          .perform())
+    #     except MoveTargetOutOfBoundsException:
+    #         login_elem.click()
+    #
+    #     # update server calls
+    #     update_activity()
 
     # Enter username and password and logs the user in
     # Sometimes the element name isn't 'Username' and 'Password'
@@ -115,13 +145,13 @@ def login_user(browser,
     # wait until it navigates to the login page
     login_page_title = "Login"
     explicit_wait(browser, "TC", login_page_title, logger)
-    printt("[login] arrived login page")
+    printt("[login_user] arrived login page")
 
     # wait until the 'username' input element is located and visible
     input_username_XP = "//input[@name='username']"
     explicit_wait(browser, "VOEL", [input_username_XP, "XPath"], logger)
 
-    printt("[login] input username")
+    printt("[login_user] input username")
     input_username = browser.find_element_by_xpath(input_username_XP)
 
     (ActionChains(browser)
@@ -143,7 +173,7 @@ def login_user(browser,
     if not isinstance(password, str):
         password = str(password)
 
-    printt("[login] input password")
+    printt("[login_user] input password")
     (ActionChains(browser)
      .move_to_element(input_password[0])
      .click()
@@ -154,16 +184,26 @@ def login_user(browser,
     for i in range(2):
         update_activity()
 
-    printt("[login] find login button")
-    try:
-        login_button = browser.find_element_by_xpath(
-            "//div[text()='Log in']")
-    except NoSuchElementException:
-        print("Login A/B test detected! Trying another string...")
-        login_button = browser.find_element_by_xpath(
-            "//div[text()='Log In']")
+    printt("[login_user] find login button")
+    #
+    #
+    #
+    #   patch
+    #   find login button
+    #   try two possible case at the same time
+    #
+    #
+    #
+    #
+    # try:
+    #     login_button = browser.find_element_by_xpath("//div[text()='Log in']")
+    # except NoSuchElementException:
+    #     print("Login A/B test detected! Trying another string...")
+    #     login_button = browser.find_element_by_xpath(
+    #         "//div[text()='Log In']")
+    login_button = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
 
-    printt("[login] click login button")
+    printt("[login_user] click login button")
     (ActionChains(browser)
      .move_to_element(login_button)
      .click()
@@ -176,36 +216,60 @@ def login_user(browser,
     #
     #
     #
-    #
+    #   patch
     #   check login status one more time
+    #       right after click the login button
     #
-    login_state = check_authorization(browser,
-                                      username,
-                                      "activity counts",
-                                      logger,
-                                      False)
+    #   explicitly wait until user avartar show up !!! very important!!!
+    #   use explicitly wait message to monitor page change
+    #       instead of the original sleep and check method
     #
+    #   img[@class='_6q-tv'] for avartar image, which indicates a successful login
+    #   div[@class='eiCW-'] for wrong password message
     #
-    #
-    #
-    #
-    #
-    #
+    indicator_selector = "//img[@class='_6q-tv']|//div[@class='eiCW-']"
+    try:
+        indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 5, True)
+        indicator_class = indicator_ele.get_attribute("class")
+        printt("[login_user]", "login indicator found! class:", indicator_class)
+        if indicator_class == "eiCW-":
+            printt("[login_user]", "it's a wrong login data indicator, quit")
+            return False
 
-    if login_state:
-        printt("[login] logged in finally")
-    else:
-        printt("[login] still need to by pass suspicious page")
+    except TimeoutException:
+        printt("[login_user]", "no indication of login success/fail, go bypass suspicious page")
         if bypass_suspicious_attempt is True:
             bypass_suspicious_login(browser, bypass_with_mobile)
         # wait until page fully load
         explicit_wait(browser, "PFL", [], logger, 5)
 
-    printt("[login] close possible pop-up windows at a fresh login")
-    dismiss_get_app_offer(browser, logger)
-    dismiss_notification_offer(browser, logger)
 
-    printt("[login] dump cookie")
+    # login_state = check_authorization(browser,
+    #                                   username,
+    #                                   "activity counts",
+    #                                   logger,
+    #                                   False)
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+
+
+    #
+    #
+    #   close pop-up windows at fresh login
+    #   SKIP THIS STEP
+    #
+    #
+    #
+    # printt("[login_user] close possible pop-up windows at a fresh login")
+    # dismiss_get_app_offer(browser, logger)
+    # dismiss_notification_offer(browser, logger)
+
+    printt("[login_user] dump cookie")
     # Check if user is logged-in (If there's two 'nav' elements)
     nav = browser.find_elements_by_xpath('//nav')
     if len(nav) == 2:
@@ -218,16 +282,17 @@ def login_user(browser,
 
 
 def bypass_suspicious_login(browser, bypass_with_mobile):
-    printt("bypass_suspicious_login(): enter replaced version")
-    """Bypass suspicious loggin attempt verification. This should be only
+    printt("bypass_suspicious_login(): patched version")
+    """Bypass suspicious login attempt verification. This should be only
     enabled
     when there isn't available cookie for the username, otherwise it will and
     shows "Unable to locate email or phone button" message, folollowed by
     CRITICAL - Wrong login data!"""
-    printt("[bypass] try close sign up modal")
+
+    printt("[bypass_suspicious_login] try close sign up modal")
     # close sign up Instagram modal if available
     try:
-        close_button = browser.find_element_by_xpath("[text()='Close']")
+        close_button = browser.find_element_by_xpath("//button[text()='Close']")
 
         (ActionChains(browser)
          .move_to_element(close_button)
@@ -240,11 +305,11 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
     except NoSuchElementException:
         pass
 
-    printt("[bypass] try click that was me")
+    printt("[bypass_suspicious_login] try click that was me")
     try:
         # click on "This was me" button if challenge page was called
-        this_was_me_button = browser.find_element_by_xpath(
-            "//button[@name='choice'][text()='This Was Me']")
+        # this_was_me_button = browser.find_element_by_xpath("//button[@name='choice'][text()='This Was Me']")
+        this_was_me_button = browser.find_element_by_xpath("//button[text()='This Was Me']")
 
         (ActionChains(browser)
          .move_to_element(this_was_me_button)
@@ -258,7 +323,7 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
         # no verification needed
         pass
 
-    printt("[bypass] try find send code button")
+    printt("[bypass_suspicious_login] try find send code button")
     try:
         choice = browser.find_element_by_xpath(
             "//label[@for='choice_1']").text
@@ -278,7 +343,7 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
                       "bypass_suspicious_login=True isn't needed anymore.")
                 return False
 
-    printt("[bypass] check if bypass_with_mobile")
+    printt("[bypass_suspicious_login] check if bypass_with_mobile")
     if bypass_with_mobile:
         choice = browser.find_element_by_xpath(
             "//label[@for='choice_0']").text
@@ -348,8 +413,67 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
         pass
 
 
+def check_authorization(browser, username, method, logger, notify=True):
+    printt("check_authorization(): patched version")
+    """ Check if user is NOW logged in """
+    if notify is True:
+        logger.info("Checking if '{}' is logged in...".format(username))
+
+    # different methods can be added in future
+    if method == "activity counts":
+
+        # navigate to owner's profile page only if it is on an unusual page
+        current_url = get_current_url(browser)
+        if (not current_url or
+                "https://www.instagram.com" not in current_url or
+                "https://www.instagram.com/graphql/" in current_url):
+            profile_link = 'https://www.instagram.com/{}/'.format(username)
+            web_address_navigator(browser, profile_link)
+
+        # if user is not logged in, `activity_counts` will be `None`- JS `null`
+        try:
+            activity_counts = browser.execute_script(
+                "return window._sharedData.activity_counts")
+
+        except WebDriverException:
+            try:
+                browser.execute_script("location.reload()")
+                update_activity()
+
+                activity_counts = browser.execute_script(
+                    "return window._sharedData.activity_counts")
+
+            except WebDriverException:
+                activity_counts = None
+
+        # if user is not logged in, `activity_counts_new` will be `None`- JS
+        # `null`
+        try:
+            activity_counts_new = browser.execute_script(
+                "return window._sharedData.config.viewer")
+
+        except WebDriverException:
+            try:
+                browser.execute_script("location.reload()")
+                activity_counts_new = browser.execute_script(
+                    "return window._sharedData.config.viewer")
+
+            except WebDriverException:
+                activity_counts_new = None
+
+        printt("[check]", "activity_counts:", activity_counts, ",activity_counts_new", activity_counts_new)
+
+        if activity_counts is None and activity_counts_new is None:
+            if notify is True:
+                logger.critical(
+                    "--> '{}' is not logged in!\n".format(username))
+            return False
+
+    return True
+
+
 def dismiss_get_app_offer(browser, logger):
-    printt("dismiss_get_app_offer(): enter replaced version")
+    printt("dismiss_get_app_offer(): patched version")
     """ Dismiss 'Get the Instagram App' page after a fresh login """
     offer_elem = "//*[contains(text(), 'Get App')]"
     dismiss_elem = "//*[contains(text(), 'Not Now')]"
@@ -361,13 +485,14 @@ def dismiss_get_app_offer(browser, logger):
     # if offer_loaded:
     try:
         dismiss_elem = browser.find_element_by_xpath(dismiss_elem)
+        printt("[get-app-window]", dismiss_elem)
         click_element(browser, dismiss_elem)
     except:
         pass
 
 
 def dismiss_notification_offer(browser, logger):
-    printt("dismiss_notification_offer(): enter replaced version")
+    printt("dismiss_notification_offer(): patched version")
     """ Dismiss 'Turn on Notifications' offer on session start """
     offer_elem_loc = "//div/h2[text()='Turn on Notifications']"
     dismiss_elem_loc = "//button[text()='Not Now']"
@@ -379,12 +504,13 @@ def dismiss_notification_offer(browser, logger):
     # if offer_loaded:
     try:
         dismiss_elem = browser.find_element_by_xpath(dismiss_elem_loc)
+        printt("[notification-window]", dismiss_elem_loc)
         click_element(browser, dismiss_elem)
     except:
         pass
 
 
-def explicit_wait(browser, track, ec_params, logger, timeout=35, notify=True):
+def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
     printt("explicit_wait():", ec_params)
     """
     Explicitly wait until expected condition validates
@@ -432,6 +558,7 @@ def explicit_wait(browser, track, ec_params, logger, timeout=35, notify=True):
 
     # generic wait block
     try:
+        printt("[explicit_wait]", "start waiting for:", ec_params, "timeout:", timeout)
         wait = WebDriverWait(browser, timeout)
         result = wait.until(condition)
 

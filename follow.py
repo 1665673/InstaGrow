@@ -18,7 +18,7 @@ users = users_celebrity
 
 session = InstaPy(
     bypass_suspicious_attempt=True,
-    headless_browser=True,
+    headless_browser=False,
     use_firefox=True,
     **reporter.Arguments().all()
 )

@@ -11,8 +11,8 @@ reporter.set_version("like-ff-2.1-try")  # set a version tag
 SLEEP_BETWEEN_EACH_LIKE = 20
 
 session = InstaPy(
-    bypass_suspicious_attempt=True,
     headless_browser=True,
+    bypass_suspicious_attempt=True,
     use_firefox=True,
     **reporter.Arguments().all()
 )

@@ -227,8 +227,7 @@ class Arguments:
             Arguments.remove_none(self.proxy_arguments)
         self.all_arguments = {
             "username": self.username,
-            "password": self.password
-        }
+            "password": self.password,        }
         self.all_arguments.update(self.proxy_arguments)
         Arguments.remove_none(self.all_arguments)
         self.update_reporter()
