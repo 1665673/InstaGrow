@@ -2,35 +2,29 @@ from instapy import InstaPy
 from instapy.util import smart_run
 
 import time
-import patch
 import reporter
+import patch
 
-patch.apply()
 reporter.set_version("like-ff-2.1-try")  # set a version tag
+reporter.checkin()
+patch.apply()
 
 SLEEP_BETWEEN_EACH_LIKE = 20
+
+tags = ['love', 'instagood', 'photooftheday', 'fashion']
 
 session = InstaPy(
     headless_browser=True,
     bypass_suspicious_attempt=True,
     use_firefox=True,
-    **reporter.Arguments().all()
+    **reporter.arguments.all()
 )
 
 with smart_run(session):
     while True:
-        try:
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
-            session.like_by_tags(['love'], amount=1, interact=False)
-
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
-            session.like_by_tags(['instagood'], amount=1, interact=False)
-
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
-            session.like_by_tags(['photooftheday'], amount=1, interact=False)
-
-            time.sleep(SLEEP_BETWEEN_EACH_LIKE)
-            session.like_by_tags(['fashion'], amount=1, interact=False)
-
-        except Exception as e:
-            reporter.error(e)
+        for tag in tags:
+            try:
+                time.sleep(SLEEP_BETWEEN_EACH_LIKE)
+                session.like_by_tags([tag], amount=1, interact=False)
+            except Exception as e:
+                reporter.error(e)

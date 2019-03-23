@@ -2,11 +2,12 @@ from instapy import InstaPy
 from instapy import smart_run
 
 import time
-import patch
 import reporter
+import patch
 
-patch.apply()
 reporter.set_version("follow-ff-2.0")
+reporter.checkin()
+patch.apply()
 
 SLEEP_BETWEEN_EACH_FOLLOW = 25
 SLEEP_AFTER_ALL_FOLLOW = 240
@@ -18,9 +19,9 @@ users = users_celebrity
 
 session = InstaPy(
     bypass_suspicious_attempt=True,
-    headless_browser=False,
+    headless_browser=True,
     use_firefox=True,
-    **reporter.Arguments().all()
+    **reporter.arguments.all()
 )
 
 with smart_run(session):

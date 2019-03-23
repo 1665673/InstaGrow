@@ -1,18 +1,28 @@
+# guaranteed to work with instapy-0.3.4
 import sys
-import time
+import reporter
 
 
 #
+#
+#   apply all patches
 #
 def apply():
+    sys.modules['instapy'].InstaPy.reporter = reporter
+    sys.modules['instapy'].InstaPy.login.__code__ = login.__code__
+
+    sys.modules['instapy.login_util'].reporter = reporter
     sys.modules['instapy.login_util'].printt = printt
-    sys.modules['instapy.util'].printt = printt
     sys.modules['instapy.login_util'].login_user.__code__ = login_user.__code__
     sys.modules['instapy.login_util'].bypass_suspicious_login.__code__ = bypass_suspicious_login.__code__
     sys.modules['instapy.login_util'].dismiss_get_app_offer.__code__ = dismiss_get_app_offer.__code__
     sys.modules['instapy.login_util'].dismiss_notification_offer.__code__ = dismiss_notification_offer.__code__
+
+    sys.modules['instapy.util'].reporter = reporter
+    sys.modules['instapy.util'].printt = printt
     sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
+    sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
 
 
 #
@@ -23,8 +33,57 @@ def apply():
 #
 #
 #
-def printt(*a, **k):
-    print("[%d]" % int(time.time()), *a, **k)
+def printt(str):
+    # print("LOGIN [%d] %s" % (int(time.time()), str))
+    reporter.log(str, title="LOGIN")
+
+
+def login(self):
+    self.reporter.event("LOGIN-BEGIN")
+    """Used to login the user either with the username and password"""
+    if not login_user(self.browser,
+                      self.username,
+                      self.password,
+                      self.logger,
+                      self.logfolder,
+                      self.switch_language,
+                      self.bypass_suspicious_attempt,
+                      self.bypass_with_mobile):
+        self.reporter.event("LOGIN-FAIL")
+        message = "Wrong login data!"
+        highlight_print(self.username,
+                        message,
+                        "login",
+                        "critical",
+                        self.logger)
+        self.aborting = True
+
+    else:
+        self.reporter.event("LOGIN-SUCCESS")
+        message = "Logged in successfully!"
+        highlight_print(self.username,
+                        message,
+                        "login",
+                        "info",
+                        self.logger)
+        # try to save account progress
+        try:
+            save_account_progress(self.browser,
+                                  self.username,
+                                  self.logger)
+        except Exception:
+            self.logger.warning(
+                'Unable to save account progress, skipping data update')
+
+    self.followed_by = log_follower_num(self.browser,
+                                        self.username,
+                                        self.logfolder)
+    self.following_num = log_following_num(self.browser,
+                                           self.username,
+                                           self.logfolder)
+    self.reporter.data("followers", self.followed_by)
+
+    return self
 
 
 def login_user(browser,
@@ -39,6 +98,13 @@ def login_user(browser,
     """Logins the user with the given username and password"""
     assert username, 'Username not provided'
     assert password, 'Password not provided'
+    username = str(username)
+    password = str(password)
+    # if both username & password are set to "QUERY"
+    # then we enable a query-mode, which means this program will try fetch data from database
+    query_mode = False
+    if username == "QUERY" and password == "QUERY":
+        query_mode = True
 
     #
     #
@@ -47,14 +113,15 @@ def login_user(browser,
     #   load cookie before doing anything else
     #
     #
-    printt("[login_user]", "load cookie")
+    printt("[login_user] load cookie")
+    cookie_loaded = False
     try:
-        for cookie in pickle.load(open(
-                '{0}{1}_cookie.pkl'.format(logfolder, username), 'rb')):
+        cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
+        for cookie in cookies:
             browser.add_cookie(cookie)
             cookie_loaded = True
     except (WebDriverException, OSError, IOError):
-        print("Cookie file not found, creating cookie...")
+        printt("[login_user] Cookie file not found, creating cookie...")
 
     #
     #   patch
@@ -63,10 +130,9 @@ def login_user(browser,
     #
     # ig_homepage = "https://www.instagram.com"
     ig_homepage = "https://www.instagram.com/accounts/login/"
-
-    printt("[login_user]", "go to login page:", ig_homepage)
+    printt("[login_user] go to login page:%s" % ig_homepage)
     web_address_navigator(browser, ig_homepage)
-    cookie_loaded = False
+    reporter.event("LOGIN-PAGE-LOADED")
 
     # include sleep(1) to prevent getting stuck on google.com
     # sleep(1)
@@ -97,8 +163,8 @@ def login_user(browser,
                                       False)
     if login_state is True:
         printt("[login_user] logged in!!!")
-        printt("[login_user] close possible pop-up window at fresh login")
-        dismiss_notification_offer(browser, logger)
+        # printt("[login_user] close possible pop-up window at fresh login")
+        # dismiss_notification_offer(browser, logger)
         return True
     else:
         printt("[login_user] not logged in, need to input username/password")
@@ -106,8 +172,7 @@ def login_user(browser,
     # if user is still not logged in, then there is an issue with the cookie
     # so go create a new cookie..
     if cookie_loaded:
-        print("Issue with cookie for user {}. Creating "
-              "new cookie...".format(username))
+        printt("[login_user] Issue with cookie for user {}. Creating new cookie...".format(username))
 
     #
     #
@@ -142,124 +207,276 @@ def login_user(browser,
     # Sometimes the element name isn't 'Username' and 'Password'
     # (valid for placeholder too)
 
+    #
+    #
+    #
+    #
+    #   patch
+    #   redesigned login procedure:
+    #   (1) find elements: username-input, password-input, login-button
+    #   (2) use a loop to input credentials
+    #       (a) input username, password, then click login
+    #       (b) wait for indicators, if login succeeded, we break this loop
+    #
+    #
+    #   especially, for login-button,
+    #   find two possible version at same time, instead of one by one and
+    #   totally skip that A/B test thing
+    #   try:
+    #       login_button = browser.find_element_by_xpath("//div[text()='Log in']")
+    #   except NoSuchElementException:
+    #        print("Login A/B test detected! Trying another string...")
+    #       login_button = browser.find_element_by_xpath(
+    #          "//div[text()='Log In']")
+    #
+    #
+
+    # wait until the 'username' input element is located and visible
     # wait until it navigates to the login page
     login_page_title = "Login"
     explicit_wait(browser, "TC", login_page_title, logger)
     printt("[login_user] arrived login page")
-
-    # wait until the 'username' input element is located and visible
     input_username_XP = "//input[@name='username']"
     explicit_wait(browser, "VOEL", [input_username_XP, "XPath"], logger)
-
-    printt("[login_user] input username")
     input_username = browser.find_element_by_xpath(input_username_XP)
-
-    (ActionChains(browser)
-     .move_to_element(input_username)
-     .click()
-     .send_keys(username)
-     .perform())
-
-    # update server calls for both 'click' and 'send_keys' actions
-    for i in range(2):
-        update_activity()
-
-    # sleep(1)
-
-    #  password
-    input_password = browser.find_elements_by_xpath(
-        "//input[@name='password']")
-
-    if not isinstance(password, str):
-        password = str(password)
-
-    printt("[login_user] input password")
-    (ActionChains(browser)
-     .move_to_element(input_password[0])
-     .click()
-     .send_keys(password)
-     .perform())
-
-    # update server calls for both 'click' and 'send_keys' actions
-    for i in range(2):
-        update_activity()
-
-    printt("[login_user] find login button")
-    #
-    #
-    #
-    #   patch
-    #   find login button
-    #   try two possible case at the same time
-    #
-    #
-    #
-    #
-    # try:
-    #     login_button = browser.find_element_by_xpath("//div[text()='Log in']")
-    # except NoSuchElementException:
-    #     print("Login A/B test detected! Trying another string...")
-    #     login_button = browser.find_element_by_xpath(
-    #         "//div[text()='Log In']")
+    input_password = browser.find_elements_by_xpath("//input[@name='password']")[0]
     login_button = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
+    printt("[login_user] found username-input, password-input, login-button")
 
-    printt("[login_user] click login button")
-    (ActionChains(browser)
-     .move_to_element(login_button)
-     .click()
-     .perform())
+    page_after_login = ""
+    while True:
+        reporter.event("LOGIN-WAIT-FOR-CREDENTIALS")
 
-    # update server calls
-    update_activity()
+        # read username/password
+        if not username or not password or query_mode:
+            if query_mode:
+                # query database for latest credentials
+                pass
+            else:
+                username = str(input("username:"))
+                password = str(input("password:"))
+
+        # fill username/password
+        input_username.clear()
+        input_password.clear()
+        printt("[login_user] input username")
+        (ActionChains(browser)
+         .move_to_element(input_username)
+         .click()
+         .send_keys(username)
+         .perform())
+
+        printt("[login_user] input password")
+        (ActionChains(browser)
+         .move_to_element(input_password)
+         .click()
+         .send_keys(password)
+         .perform())
+
+        printt("[login_user] click login button")
+        (ActionChains(browser)
+         .move_to_element(login_button)
+         .click()
+         .perform())
+        reporter.event("LOGIN-CREDENTIALS-SENT")
+
+        #
+        #   4 different conditions, after submitting credentials
+        #
+        #   (1) div[@class='eiCW-']: wrong password notification shows up, retry password
+        #
+        #   for whatever other cases, it should indicate a successful login,
+        #   but additional actions may be required:
+        #
+        #   (2) img[@class='_6q-tv']: logged in, avatar shows up, ALL SET!
+        #   (3) button[text()='Send Security Code']: logged in, but authentication page shows up
+        #   (4) other suspicious pages show up: explicit_wait times out
+        #
+        #
+        indicator_selector = "//div[@class='eiCW-']|//img[@class='_6q-tv']|//button[text()='Send Security Code']"
+        try:
+            # if page_after_login is not "", then it's not the first attemp, let wait a bit
+            if page_after_login == "LOGIN":
+                printt("[login_user] wait 5 seconds, since it's not the first attempt")
+                sleep(5)
+
+            indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 3, True)
+            indicator_class = indicator_ele.get_attribute("class")
+            printt("[login_user] login result indicator found! class:%s" % indicator_class)
+            if indicator_class == "eiCW-":
+                printt("[login_user] it's a wrong-login-credential indicator, try again")
+                username = ""
+                password = ""
+                reporter.event("LOGIN-WRONG-CREDENTIALS")
+                page_after_login = "LOGIN"
+                continue
+            elif indicator_class == "_6q-tv":
+                printt("[login_user] it's a logged-in indicator, congratulations!")
+                page_after_login = "HOME"
+                break
+            else:
+                printt("[login_user] it's a authentication-page indicator, need to send code")
+                page_after_login = "AUTHENTICATION"
+                break
+        except Exception:
+            page_after_login = "SUSPICIOUS"
+            break
 
     #
+    #
+    #   after successfully logged in
+    #
+    #   now 3 possibilities:
+    #   (1) logged in home profile page, we are ALL SET
+    #   (2) authentication page, we have to process it
+    #   (3) other suspicious page
+    #       (a) if argument asks to process it, we process it
+    #       (b) otherwise, we simply do a browser refresh
+    #
+    #
+    #
+    if page_after_login == "HOME":
+        pass
+    elif page_after_login == "AUTHENTICATION":
+        #
+        #
+        #   the most complicated part
+        #   deal with authentication codes
+        #
+        #
+        #
+
+        # collection page elements and analyse situation
+        choice0 = None
+        choice1 = None
+        send_code_button = None
+        choice0_text = ""
+        choice1_text = ""
+        try:
+            choice0 = browser.find_element_by_xpath("//label[@for='choice_0']")
+            choice0_text = choice0.text
+        except Exception:
+            pass
+        try:
+            choice1 = browser.find_element_by_xpath("//label[@for='choice_1']")
+            choice1_text = choice1.text
+        except Exception:
+            pass
+        try:
+            send_code_button = browser.find_element_by_xpath("//button[text()='Send Security Code']")
+        except Exception:
+            pass
+
+        # if we have got both methods of sending code, let user choose it
+        if choice0:
+            reporter.event("LOGIN-CHOOSE-METHOD-TO-SEND-CODE")
+            choice_click = choice1
+            if query_mode:
+                pass
+            else:
+                printt("[login_user] choose a method receive code from instagram:\n0: " +
+                       choice0_text + "\n1: " + choice1_text + "\n")
+                choice = input()
+                if choice == "0":
+                    choice_click = choice0
+            # click on the choice label
+            (ActionChains(browser)
+             .move_to_element(choice_click)
+             .click()
+             .perform())
+        # click send code button
+        (ActionChains(browser)
+         .move_to_element(send_code_button)
+         .click()
+         .perform())
+        printt("[login_user] a security code has been sent to " + choice0_text if choice == 0 else choice1)
+        reporter.event("LOGIN-SECURITY-CODE-REQUESTED")
+
+        # wait for security code page to load
+        input_code = None
+        button_submit = None
+        try:
+            input_code = explicit_wait(browser, "VOEL", ["//input[@id='security_code']", "XPath"], logger, 15, True)
+        except Exception:
+            # time out
+            return False
+            pass
+        button_submit = browser.find_element_by_xpath("//button[text()='Submit']")
+
+        # read and send security code
+        while True:
+            reporter.event("LOGIN-WAIT-FOR-SECURITY-CODE")
+            security_code = None
+            if query_mode:
+                pass
+            else:
+                security_code = str(input("input security code:"))
+
+            input_code.clear()
+            (ActionChains(browser)
+             .move_to_element(input_code)
+             .click()
+             .send_keys(security_code)
+             .perform())
+
+            (ActionChains(browser)
+             .move_to_element(button_submit)
+             .click()
+             .perform())
+            reporter.event("LOGIN-SECURITY-CODE-SENT")
+
+            try:
+                success_selector = "//img[@class='_6q-tv']"
+                success = explicit_wait(browser, "VOEL", [success_selector, "XPath"], logger, 5, True)
+                if success:
+                    printt("[login_user] sucurity code went through, login successfully!!!")
+                    break
+            except Exception:
+                # correct security code
+                printt("[login_user] wrong security code, please try again")
+                reporter.event("LOGIN-WRONG-SECURITY-CODE")
+                continue
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+        #
+
+        pass
+    elif page_after_login == "SUSPICIOUS":
+        if bypass_suspicious_attempt:
+            printt("[login_user] no indication of what specific location we're at, let's bypass-suspicious-page")
+            reporter.event("LOGIN-BEGIN-BYPASS-SUSPICIOUS-PAGE")
+            if not bypass_suspicious_login(browser, bypass_with_mobile):
+                return False
+        else:
+            printt("[login_user] no indication of what specific location we're at, let's refresh our browser")
+            reload_webpage(browser)
+    else:
+        pass
+
+    # refresh one more time
+    reload_webpage(browser)
+    #
+    #
+    #   I lift up authentication logic to this place, from by-pass-suspicious-page
+    #   by-pass-suspicious-page will only be responsible for other miscellaneous pages
+    #   also,
+    #   if the code from our customer is not correct,
+    #   I use a loop to keep trying
+    #
+
     #
     #
     #
     #   patch
-    #   check login status one more time
-    #       right after click the login button
     #
-    #   explicitly wait until user avartar show up !!! very important!!!
-    #   use explicitly wait message to monitor page change
-    #       instead of the original sleep and check method
-    #
-    #   img[@class='_6q-tv'] for avartar image, which indicates a successful login
-    #   div[@class='eiCW-'] for wrong password message
-    #
-    indicator_selector = "//img[@class='_6q-tv']|//div[@class='eiCW-']"
-    try:
-        indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 5, True)
-        indicator_class = indicator_ele.get_attribute("class")
-        printt("[login_user]", "login indicator found! class:", indicator_class)
-        if indicator_class == "eiCW-":
-            printt("[login_user]", "it's a wrong login data indicator, quit")
-            return False
-
-    except TimeoutException:
-        printt("[login_user]", "no indication of login success/fail, go bypass suspicious page")
-        if bypass_suspicious_attempt is True:
-            bypass_suspicious_login(browser, bypass_with_mobile)
-        # wait until page fully load
-        explicit_wait(browser, "PFL", [], logger, 5)
-
-
-    # login_state = check_authorization(browser,
-    #                                   username,
-    #                                   "activity counts",
-    #                                   logger,
-    #                                   False)
-    #
-    #
-    #
-    #
-    #
-    #
-    #
-
-
-    #
-    #
+    #   FINALLY!!!!!!
+    #   arrived at this step, we can safely assume we logged in
     #   close pop-up windows at fresh login
     #   SKIP THIS STEP
     #
@@ -268,21 +485,26 @@ def login_user(browser,
     # printt("[login_user] close possible pop-up windows at a fresh login")
     # dismiss_get_app_offer(browser, logger)
     # dismiss_notification_offer(browser, logger)
-
     printt("[login_user] dump cookie")
-    # Check if user is logged-in (If there's two 'nav' elements)
-    nav = browser.find_elements_by_xpath('//nav')
-    if len(nav) == 2:
-        # create cookie for username
-        pickle.dump(browser.get_cookies(), open(
-            '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
-        return True
-    else:
-        return False
+    reporter.event("LOGIN-DUMPING-COOKIE")
+    pickle.dump(browser.get_cookies(), open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+    return True
+
+    # # Check if user is logged-in (If there's two 'nav' elements)
+    # nav = browser.find_elements_by_xpath('//nav')
+    # if len(nav) == 2:
+    #     # create cookie for username
+    #     reporter.event("LOGIN-DUMPING-COOKIE")
+    #     pickle.dump(browser.get_cookies(), open(
+    #         '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+    #     return True
+    # else:
+    #     return False
 
 
 def bypass_suspicious_login(browser, bypass_with_mobile):
     printt("bypass_suspicious_login(): patched version")
+    sleep(10000)  # let me look at this page carefully
     """Bypass suspicious login attempt verification. This should be only
     enabled
     when there isn't available cookie for the username, otherwise it will and
@@ -323,94 +545,115 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
         # no verification needed
         pass
 
-    printt("[bypass_suspicious_login] try find send code button")
-    try:
-        choice = browser.find_element_by_xpath(
-            "//label[@for='choice_1']").text
-
-    except NoSuchElementException:
-        try:
-            choice = browser.find_element_by_xpath(
-                "//label[@class='_q0nt5']").text
-
-        except Exception:
-            try:
-                choice = browser.find_element_by_xpath(
-                    "//label[@class='_q0nt5 _a7z3k']").text
-
-            except Exception:
-                print("Unable to locate email or phone button, maybe "
-                      "bypass_suspicious_login=True isn't needed anymore.")
-                return False
-
-    printt("[bypass_suspicious_login] check if bypass_with_mobile")
-    if bypass_with_mobile:
-        choice = browser.find_element_by_xpath(
-            "//label[@for='choice_0']").text
-
-        mobile_button = browser.find_element_by_xpath(
-            "//label[@for='choice_0']")
-
-        (ActionChains(browser)
-         .move_to_element(mobile_button)
-         .click()
-         .perform())
-
-        sleep(5)
-
-    send_security_code_button = browser.find_element_by_xpath(
-        "//button[text()='Send Security Code']")
-
-    (ActionChains(browser)
-     .move_to_element(send_security_code_button)
-     .click()
-     .perform())
-
-    # update server calls
-    update_activity()
-
-    print('Instagram detected an unusual login attempt')
-    print('A security code was sent to your {}'.format(choice))
-    security_code = input('Type the security code here: ')
-
-    security_code_field = browser.find_element_by_xpath((
-        "//input[@id='security_code']"))
-
-    (ActionChains(browser)
-     .move_to_element(security_code_field)
-     .click()
-     .send_keys(security_code)
-     .perform())
-
-    # update server calls for both 'click' and 'send_keys' actions
-    for i in range(2):
-        update_activity()
-
-    submit_security_code_button = browser.find_element_by_xpath(
-        "//button[text()='Submit']")
-
-    (ActionChains(browser)
-     .move_to_element(submit_security_code_button)
-     .click()
-     .perform())
-
-    # update server calls
-    update_activity()
-
-    try:
-        sleep(5)
-        # locate wrong security code message
-        wrong_login = browser.find_element_by_xpath((
-            "//p[text()='Please check the code we sent you and try "
-            "again.']"))
-
-        if wrong_login is not None:
-            print(('Wrong security code! Please check the code Instagram'
-                   'sent you and try again.'))
-
-    except NoSuchElementException:
-        # correct security code
-        pass
+    return True
+    #
+    #
+    #
+    #
+    #
+    #   patch
+    #   SKIP ALL THE FOLLOWING PART
+    #   authentication handling now moved to user_login()
+    #
+    #
+    #
+    #
+    # printt("[bypass_suspicious_login] try find send code button")
+    # try:
+    #     choice = browser.find_element_by_xpath(
+    #         "//label[@for='choice_1']").text
+    #
+    # except NoSuchElementException:
+    #     try:
+    #         choice = browser.find_element_by_xpath(
+    #             "//label[@class='_q0nt5']").text
+    #
+    #     except Exception:
+    #         try:
+    #             choice = browser.find_element_by_xpath(
+    #                 "//label[@class='_q0nt5 _a7z3k']").text
+    #
+    #         except Exception:
+    #             print("Unable to locate email or phone button, maybe "
+    #                   "bypass_suspicious_login=True isn't needed anymore.")
+    #             return False
+    #
+    # printt("[bypass_suspicious_login] check if bypass_with_mobile")
+    # if bypass_with_mobile:
+    #     choice = browser.find_element_by_xpath(
+    #         "//label[@for='choice_0']").text
+    #
+    #     mobile_button = browser.find_element_by_xpath(
+    #         "//label[@for='choice_0']")
+    #
+    #     (ActionChains(browser)
+    #      .move_to_element(mobile_button)
+    #      .click()
+    #      .perform())
+    #
+    #     sleep(5)
+    #
+    # send_security_code_button = browser.find_element_by_xpath(
+    #     "//button[text()='Send Security Code']")
+    #
+    # (ActionChains(browser)
+    #  .move_to_element(send_security_code_button)
+    #  .click()
+    #  .perform())
+    #
+    # # update server calls
+    # update_activity()
+    #
+    # print('Instagram detected an unusual login attempt')
+    # print('A security code was sent to your {}'.format(choice))
+    # security_code = input('Type the security code here: ')
+    #
+    # security_code_field = browser.find_element_by_xpath((
+    #     "//input[@id='security_code']"))
+    #
+    # (ActionChains(browser)
+    #  .move_to_element(security_code_field)
+    #  .click()
+    #  .send_keys(security_code)
+    #  .perform())
+    #
+    # # update server calls for both 'click' and 'send_keys' actions
+    # for i in range(2):
+    #     update_activity()
+    #
+    # submit_security_code_button = browser.find_element_by_xpath(
+    #     "//button[text()='Submit']")
+    #
+    # (ActionChains(browser)
+    #  .move_to_element(submit_security_code_button)
+    #  .click()
+    #  .perform())
+    #
+    # # update server calls
+    # update_activity()
+    #
+    # try:
+    #     sleep(5)
+    #     # locate wrong security code message
+    #     wrong_login = browser.find_element_by_xpath((
+    #         "//p[text()='Please check the code we sent you and try "
+    #         "again.']"))
+    #
+    #     if wrong_login is not None:
+    #         print(('Wrong security code! Please check the code Instagram'
+    #                'sent you and try again.'))
+    #
+    # except NoSuchElementException:
+    #     # correct security code
+    #     pass
+    #
+    #
+    #
+    #
+    #
+    #
+    #
+    #
 
 
 def check_authorization(browser, username, method, logger, notify=True):
@@ -461,7 +704,7 @@ def check_authorization(browser, username, method, logger, notify=True):
             except WebDriverException:
                 activity_counts_new = None
 
-        printt("[check]", "activity_counts:", activity_counts, ",activity_counts_new", activity_counts_new)
+        printt("[check] activity_counts: %s, ,activity_counts_new: %s" % (activity_counts, activity_counts_new))
 
         if activity_counts is None and activity_counts_new is None:
             if notify is True:
@@ -485,7 +728,7 @@ def dismiss_get_app_offer(browser, logger):
     # if offer_loaded:
     try:
         dismiss_elem = browser.find_element_by_xpath(dismiss_elem)
-        printt("[get-app-window]", dismiss_elem)
+        printt("[get-app-window] %s" % dismiss_elem)
         click_element(browser, dismiss_elem)
     except:
         pass
@@ -504,14 +747,14 @@ def dismiss_notification_offer(browser, logger):
     # if offer_loaded:
     try:
         dismiss_elem = browser.find_element_by_xpath(dismiss_elem_loc)
-        printt("[notification-window]", dismiss_elem_loc)
+        printt("[notification-window] %s" % dismiss_elem_loc)
         click_element(browser, dismiss_elem)
     except:
         pass
 
 
 def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
-    printt("explicit_wait():", ec_params)
+    printt("explicit_wait(): %s" % ec_params)
     """
     Explicitly wait until expected condition validates
 
@@ -538,6 +781,50 @@ def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
         locator = (find_by, elem_address)
         condition = ec.visibility_of_element_located(locator)
 
+    #
+    #
+    #
+    #
+    #   add two modes,
+    #   IOEL, OR
+    #
+    #   for OR, ec_params syntax is:
+    #   [ {"visible":True, "path":"//button"}, {"visible":False, "path":"//div"},...]
+    #
+    #
+    #
+    elif track == "IOEL":
+        elem_address, find_method = ec_params
+        ec_name = "invisibility of element located"
+
+        find_by = (By.XPATH if find_method == "XPath" else
+                   By.CSS_SELECTOR if find_method == "CSS" else
+                   By.CLASS_NAME)
+        locator = (find_by, elem_address)
+        condition = ec.invisibility_of_element_located(locator)
+
+    # by XPATH only
+    elif track == "OR":
+        ec_name = "OR complex condition"
+
+        conditions = []
+        for selector in ec_params:
+            locator = (By.XPATH, selector.path)
+            if selector.visible:
+                conditions.append(ec.visibility_of_element_located(locator))
+            else:
+                conditions.append(ec.invisibility_of_element_located(locator))
+
+        # still not sure if this operator exists.
+        # according to https://codoid.com/selenium-expectedconditions-with-logical-operators/
+        # it should be lowercase 'or' but not in python
+        condition = ec.OR(*conditions)
+    #
+    #
+    #
+    #
+    #
+    #
     elif track == "TC":
         expect_in_title = ec_params[0]
         ec_name = "title contains '{}' string".format(expect_in_title)
@@ -558,15 +845,80 @@ def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
 
     # generic wait block
     try:
-        printt("[explicit_wait]", "start waiting for:", ec_params, "timeout:", timeout)
+        printt("[explicit_wait] start waiting for: %s, timeout %d" % (ec_params, timeout))
         wait = WebDriverWait(browser, timeout)
         result = wait.until(condition)
 
-    except TimeoutException:
+    except Exception as e:
         if notify is True:
-            logger.info(
-                "Timed out with failure while explicitly waiting until {}!\n"
-                    .format(ec_name))
+            logger.info("Timed out with failure while explicitly waiting until {}!\n".format(ec_name))
         return False
 
     return result
+
+
+def update_activity(action="server_calls"):
+    #
+    #
+    #
+    #
+    # skip this function completely
+    #
+    #
+    #
+    #
+    #
+    return
+    """ Record every Instagram server call (page load, content load, likes,
+        comments, follows, unfollow). """
+    # check action availability
+    quota_supervisor("server_calls")
+
+    # get a DB and start a connection
+    db, id = get_database()
+    conn = sqlite3.connect(db)
+
+    with conn:
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        # collect today data
+        cur.execute("SELECT * FROM recordActivity WHERE profile_id=:var AND "
+                    "STRFTIME('%Y-%m-%d %H', created) == STRFTIME('%Y-%m-%d "
+                    "%H', 'now', 'localtime')",
+                    {"var": id})
+        data = cur.fetchone()
+
+        if data is None:
+            # create a new record for the new day
+            cur.execute("INSERT INTO recordActivity VALUES "
+                        "(?, 0, 0, 0, 0, 1, STRFTIME('%Y-%m-%d %H:%M:%S', "
+                        "'now', 'localtime'))",
+                        (id,))
+
+        else:
+            # sqlite3.Row' object does not support item assignment -> so,
+            # convert it into a new dict
+            data = dict(data)
+
+            # update
+            data[action] += 1
+            quota_supervisor(action, update=True)
+
+            if action != "server_calls":
+                # always update server calls
+                data["server_calls"] += 1
+                quota_supervisor("server_calls", update=True)
+
+            sql = ("UPDATE recordActivity set likes = ?, comments = ?, "
+                   "follows = ?, unfollows = ?, server_calls = ?, "
+                   "created = STRFTIME('%Y-%m-%d %H:%M:%S', 'now', "
+                   "'localtime') "
+                   "WHERE  profile_id=? AND STRFTIME('%Y-%m-%d %H', created) "
+                   "== "
+                   "STRFTIME('%Y-%m-%d %H', 'now', 'localtime')")
+
+            cur.execute(sql, (data['likes'], data['comments'], data['follows'],
+                              data['unfollows'], data['server_calls'], id))
+
+        # commit the latest changes
+        conn.commit()
