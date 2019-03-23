@@ -370,6 +370,7 @@ def login_user(browser,
             pass
 
         # if we have got both methods of sending code, let user choose it
+        choice = "1"
         if choice0:
             reporter.event("LOGIN-CHOOSE-METHOD-TO-SEND-CODE")
             choice_click = choice1
@@ -391,7 +392,7 @@ def login_user(browser,
          .move_to_element(send_code_button)
          .click()
          .perform())
-        printt("[login_user] a security code has been sent to " + (choice0_text if choice == 0 else choice1_text))
+        printt("[login_user] a security code has been sent to " + (choice0_text if choice == "0" else choice1_text))
         reporter.event("LOGIN-SECURITY-CODE-REQUESTED")
 
         # wait for security code page to load
