@@ -140,10 +140,19 @@ def set_task(task):
     reporter_fields.update({"task": task})
 
 
+def set_instagram_user(username):
+    reporter_fields.update({"instagramUser": username})
+
+
 def checkin():
     global reporter
     global reporter_fields
     reporter.checkin(CHECKIN_URL, reporter_fields)
+
+
+def begin_report(yes_or_no):
+    if sys.stderr.begin_report:
+        sys.stderr.begin_report(yes_or_no)
 
 
 def get_stderr():
