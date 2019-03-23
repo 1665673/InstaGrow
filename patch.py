@@ -356,11 +356,13 @@ def login_user(browser,
             choice0 = browser.find_element_by_xpath("//label[@for='choice_0']")
             choice0_text = choice0.text
         except Exception:
+            choice0 = None
             pass
         try:
             choice1 = browser.find_element_by_xpath("//label[@for='choice_1']")
             choice1_text = choice1.text
         except Exception:
+            choice1 = None
             pass
         try:
             send_code_button = browser.find_element_by_xpath("//button[text()='Send Security Code']")
