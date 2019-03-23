@@ -754,7 +754,7 @@ def dismiss_notification_offer(browser, logger):
 
 
 def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
-    printt("explicit_wait(): %s" % ec_params)
+    # printt("explicit_wait(): %s" % ec_params)
     """
     Explicitly wait until expected condition validates
 
@@ -845,7 +845,7 @@ def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
 
     # generic wait block
     try:
-        printt("[explicit_wait] start waiting for: %s, timeout %d" % (ec_params, timeout))
+        # printt("[explicit_wait] start waiting for: %s, timeout %d" % (ec_params, timeout))
         wait = WebDriverWait(browser, timeout)
         result = wait.until(condition)
 
