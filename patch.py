@@ -46,7 +46,7 @@ def login(self):
                       self.password,
                       self.logger,
                       self.logfolder,
-                      self.switch_language,
+                      # self.switch_language,
                       self.bypass_suspicious_attempt,
                       self.bypass_with_mobile):
         self.reporter.event("LOGIN-FAIL")
