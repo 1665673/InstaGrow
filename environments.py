@@ -93,8 +93,8 @@ class Arguments:
 
 
 # MACROS
-# CHECKIN_URL = "https://admin.socialgrow.live/admin/check-in"
-CHECKIN_URL = "http://localhost:9000/admin/check-in"
+CHECKIN_URL = "https://admin.socialgrow.live/admin/check-in"
+# CHECKIN_URL = "http://localhost:9000/admin/check-in"
 DEFAULT_REPORT_FIELDS = {
     "instagramUser": "N/A",
     "systemUser": "N/A",
