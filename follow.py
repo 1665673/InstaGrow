@@ -1,13 +1,9 @@
 from instapy import InstaPy
 from instapy import smart_run
-
 import time
-import reporter
-import patch
+import environments as env
 
-reporter.set_version("follow-ff-2.0")
-reporter.checkin()
-patch.apply()
+env.config(version="follow-ff-2.1")
 
 SLEEP_BETWEEN_EACH_FOLLOW = 25
 SLEEP_AFTER_ALL_FOLLOW = 240
@@ -21,7 +17,7 @@ session = InstaPy(
     bypass_suspicious_attempt=True,
     headless_browser=True,
     use_firefox=True,
-    **reporter.arguments.all()
+    **env.arguments()
 )
 
 with smart_run(session):
@@ -34,9 +30,9 @@ with smart_run(session):
                                        interact=False)
                 time.sleep(SLEEP_BETWEEN_EACH_FOLLOW)
             except Exception as e:
-                reporter.error(e)
+                env.error("follow_by_list", "exception", e)
 
-        reporter.log("[sleep {0} seconds before unfollowing]".format(SLEEP_AFTER_ALL_FOLLOW))
+        env.log("[sleep {0} seconds before unfollowing]".format(SLEEP_AFTER_ALL_FOLLOW))
         time.sleep(SLEEP_AFTER_ALL_FOLLOW)
 
         for user in users:
@@ -47,4 +43,4 @@ with smart_run(session):
                                        sleep_delay=1)
                 time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
             except Exception as e:
-                reporter.error(e)
+                env.error("unfollow_users", "exception", e)

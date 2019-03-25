@@ -1,6 +1,6 @@
 # guaranteed to work with instapy-0.3.4
 import sys
-import reporter
+import environments as reporter
 
 
 #
@@ -39,17 +39,17 @@ def printt(str):
 
 
 def login(self):
-    self.reporter.event("LOGIN-BEGIN")
+    self.reporter.event("LOGIN", "BEGIN")
     """Used to login the user either with the username and password"""
     if not login_user(self.browser,
                       self.username,
                       self.password,
                       self.logger,
                       self.logfolder,
-                      # self.switch_language,
+                      # self.switch_language,   # this argument cancelled since instapy-0.3.4
                       self.bypass_suspicious_attempt,
                       self.bypass_with_mobile):
-        self.reporter.event("LOGIN-FAIL")
+        self.reporter.event("LOGIN", "FAIL")
         message = "Wrong login data!"
         highlight_print(self.username,
                         message,
@@ -59,7 +59,7 @@ def login(self):
         self.aborting = True
 
     else:
-        self.reporter.event("LOGIN-SUCCESS")
+        self.reporter.event("LOGIN", "SUCCESS")
         message = "Logged in successfully!"
         highlight_print(self.username,
                         message,
@@ -91,7 +91,7 @@ def login_user(browser,
                password,
                logger,
                logfolder,
-               switch_language=True,
+               # switch_language=True, # this argument cancelled since instapy-0.3.4
                bypass_suspicious_attempt=False,
                bypass_with_mobile=False):
     printt("login_user(): patched version")
@@ -114,6 +114,7 @@ def login_user(browser,
     #
     #
     printt("[login_user] load cookie")
+    reporter.event("LOGIN", "LOADING-COOKIES")
     cookie_loaded = False
     try:
         cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
@@ -132,11 +133,26 @@ def login_user(browser,
     ig_homepage = "https://www.instagram.com/accounts/login/"
     printt("[login_user] go to login page:%s" % ig_homepage)
     web_address_navigator(browser, ig_homepage)
-    reporter.event("LOGIN-PAGE-LOADED")
+    #
+    #
+    #   wait until the login page is fully loaded
+    #
+    #
+    try:
+        explicit_wait(browser, "PFL", [], logger, 5)
+        # login_page_title = "Login"
+        # explicit_wait(browser, "TC", login_page_title, logger)
+    except Exception as e:
+        printt("[login_user] fatal error. can't load the login page, check the network connection.")
+        printt("[login_user] quitting...")
+        reporter.event("LOGIN", "FAIL-INVALID-NETWORK")
+        reporter.error(e)
+        return False
+    printt("[login_user] login page fully loaded")
+    reporter.event("LOGIN", "PAGE-LOADED")
 
     # include sleep(1) to prevent getting stuck on google.com
     # sleep(1)
-
     #
     #
     #   patch
@@ -153,8 +169,14 @@ def login_user(browser,
     # web_address_navigator(browser, ig_homepage)
     # reload_webpage(browser)
 
+    #
+    #   patch
+    #   if user already logged in, do not go process the notification offer, which wastes a lot of time
+    #   instead, simply refresh the browser
+    #
     # cookie has been LOADED, so the user SHOULD be logged in
     # check if the user IS logged in
+    #
     printt("[login_user] check if already logged in")
     login_state = check_authorization(browser,
                                       username,
@@ -163,11 +185,12 @@ def login_user(browser,
                                       False)
     if login_state is True:
         printt("[login_user] logged in!!!")
+        reload_webpage(browser)
         # printt("[login_user] close possible pop-up window at fresh login")
         # dismiss_notification_offer(browser, logger)
         return True
     else:
-        printt("[login_user] not logged in, need to input username/password")
+        printt("[login_user] not logged in, need to enter username/password")
 
     # if user is still not logged in, then there is an issue with the cookie
     # so go create a new cookie..
@@ -231,21 +254,17 @@ def login_user(browser,
     #
     #
 
-    # wait until the 'username' input element is located and visible
-    # wait until it navigates to the login page
-    login_page_title = "Login"
-    explicit_wait(browser, "TC", login_page_title, logger)
-    printt("[login_user] arrived login page")
-    input_username_XP = "//input[@name='username']"
-    explicit_wait(browser, "VOEL", [input_username_XP, "XPath"], logger)
-    input_username = browser.find_element_by_xpath(input_username_XP)
-    input_password = browser.find_elements_by_xpath("//input[@name='password']")[0]
-    login_button = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
-    printt("[login_user] found username-input, password-input, login-button")
+    # locate login form control elements in the page
+    # input_username_XP = "//input[@name='username']"
+    # explicit_wait(browser, "VOEL", [input_username_XP, "XPath"], logger)
+    input_username = browser.find_element_by_xpath("//input[@name='username']")
+    input_password = browser.find_element_by_xpath("//input[@name='password']")
+    button_login = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
+    printt("[login_user] located login form-control elements. ready for logging in.")
 
     page_after_login = ""
     while True:
-        reporter.event("LOGIN-WAIT-FOR-CREDENTIALS")
+        reporter.event("LOGIN", "WAITING-FOR-CREDENTIALS")
 
         # read username/password
         if not username or not password or query_mode:
@@ -259,14 +278,14 @@ def login_user(browser,
         # fill username/password
         input_username.clear()
         input_password.clear()
-        printt("[login_user] input username")
+        printt("[login_user] fill username")
         (ActionChains(browser)
          .move_to_element(input_username)
          .click()
          .send_keys(username)
          .perform())
 
-        printt("[login_user] input password")
+        printt("[login_user] fill password")
         (ActionChains(browser)
          .move_to_element(input_password)
          .click()
@@ -275,10 +294,10 @@ def login_user(browser,
 
         printt("[login_user] click login button")
         (ActionChains(browser)
-         .move_to_element(login_button)
+         .move_to_element(button_login)
          .click()
          .perform())
-        reporter.event("LOGIN-CREDENTIALS-SENT")
+        reporter.event("LOGIN", "CREDENTIALS-SENT")
 
         #
         #   4 different conditions, after submitting credentials
@@ -297,25 +316,25 @@ def login_user(browser,
         try:
             # if page_after_login is not "", then it's not the first attemp, let wait a bit
             if page_after_login == "LOGIN":
-                printt("[login_user] wait 5 seconds, since it's not the first attempt")
+                printt("[login_user] not the first attempt, wait 5 seconds to make sure page fully updated")
                 sleep(5)
 
-            indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 3, True)
+            indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 5, True)
             indicator_class = indicator_ele.get_attribute("class")
             printt("[login_user] login result indicator found! class:%s" % indicator_class)
             if indicator_class == "eiCW-":
                 printt("[login_user] it's a wrong-login-credential indicator, try again")
                 username = ""
                 password = ""
-                reporter.event("LOGIN-WRONG-CREDENTIALS")
+                reporter.event("LOGIN", "WRONG-CREDENTIALS")
                 page_after_login = "LOGIN"
                 continue
             elif indicator_class == "_6q-tv":
-                printt("[login_user] it's a logged-in indicator, congratulations!")
+                printt("[login_user] it's a login-successful indicator, congratulations!")
                 page_after_login = "HOME"
                 break
             else:
-                printt("[login_user] it's a authentication-page indicator, need to send code")
+                printt("[login_user] it's an authentication-page indicator, need to enter security code")
                 page_after_login = "AUTHENTICATION"
                 break
         except Exception:
@@ -350,17 +369,13 @@ def login_user(browser,
         choice0 = None
         choice1 = None
         send_code_button = None
-        choice0_text = ""
-        choice1_text = ""
         try:
             choice0 = browser.find_element_by_xpath("//label[@for='choice_0']")
-            choice0_text = choice0.text
         except Exception:
             choice0 = None
             pass
         try:
             choice1 = browser.find_element_by_xpath("//label[@for='choice_1']")
-            choice1_text = choice1.text
         except Exception:
             choice1 = None
             pass
@@ -369,31 +384,40 @@ def login_user(browser,
         except Exception:
             pass
 
-        # if we have got both methods of sending code, let user choose it
-        choice = "1"
-        if choice0:
-            reporter.event("LOGIN-CHOOSE-METHOD-TO-SEND-CODE")
-            choice_click = choice1
+        choice_made = None
+        # if we have got both methods of sending code, let user choose one
+        if choice0 and choice1:
+            reporter.event("LOGIN", "CHOOSE-METHOD-TO-SEND-CODE")
+            # ask for a choice
             if query_mode:
                 pass
             else:
-                printt("[login_user] choose a method receive code from instagram:\n0: " +
-                       choice0_text + "\n1: " + choice1_text + "\n")
-                choice = input()
-                if choice == "0":
-                    choice_click = choice0
-            # click on the choice label
-            (ActionChains(browser)
-             .move_to_element(choice_click)
-             .click()
-             .perform())
+                printt("[login_user] choose a method to receive security code from instagram:\n0: " +
+                       choice0.text + "\n1: " + choice1.text + "\n")
+                choice_made = str(input())
+            # apply the choice
+            if choice_made == "0":
+                choice_made = choice0
+            else:
+                choice_made = choice1
+        # only one choice is available, and that one will be used
+        else:
+            if choice0:
+                choice_made = choice0
+            else:
+                choice_made = choice1
+        # click on the choice label
+        (ActionChains(browser)
+         .move_to_element(choice_made)
+         .click()
+         .perform())
         # click send code button
         (ActionChains(browser)
          .move_to_element(send_code_button)
          .click()
          .perform())
-        printt("[login_user] a security code has been sent to " + (choice0_text if choice == "0" else choice1_text))
-        reporter.event("LOGIN-SECURITY-CODE-REQUESTED")
+        printt("[login_user] a security code has been sent to " + choice_made.text)
+        reporter.event("LOGIN", "SECURITY-CODE-REQUESTED")
 
         # wait for security code page to load
         input_code = None
@@ -408,7 +432,7 @@ def login_user(browser,
 
         # read and send security code
         while True:
-            reporter.event("LOGIN-WAIT-FOR-SECURITY-CODE")
+            reporter.event("LOGIN", "WAITING-FOR-SECURITY-CODE")
             security_code = None
             if query_mode:
                 pass
@@ -426,7 +450,7 @@ def login_user(browser,
              .move_to_element(button_submit)
              .click()
              .perform())
-            reporter.event("LOGIN-SECURITY-CODE-SENT")
+            reporter.event("LOGIN", "SECURITY-CODE-SENT")
 
             try:
                 success_selector = "//img[@class='_6q-tv']"
@@ -437,7 +461,7 @@ def login_user(browser,
             except Exception:
                 # correct security code
                 printt("[login_user] wrong security code, please try again")
-                reporter.event("LOGIN-WRONG-SECURITY-CODE")
+                reporter.event("LOGIN", "WRONG-SECURITY-CODE")
                 continue
         #
         #
@@ -448,12 +472,10 @@ def login_user(browser,
         #
         #
         #
-
-        pass
     elif page_after_login == "SUSPICIOUS":
         if bypass_suspicious_attempt:
             printt("[login_user] no indication of what specific location we're at, let's bypass-suspicious-page")
-            reporter.event("LOGIN-BEGIN-BYPASS-SUSPICIOUS-PAGE")
+            reporter.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
             if not bypass_suspicious_login(browser, bypass_with_mobile):
                 return False
         else:
@@ -489,7 +511,7 @@ def login_user(browser,
     # dismiss_get_app_offer(browser, logger)
     # dismiss_notification_offer(browser, logger)
     printt("[login_user] dump cookie")
-    reporter.event("LOGIN-DUMPING-COOKIE")
+    reporter.event("LOGIN", "DUMPING-COOKIES")
     pickle.dump(browser.get_cookies(), open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
     return True
 
@@ -497,7 +519,7 @@ def login_user(browser,
     # nav = browser.find_elements_by_xpath('//nav')
     # if len(nav) == 2:
     #     # create cookie for username
-    #     reporter.event("LOGIN-DUMPING-COOKIE")
+    #     reporter.event("LOGIN","DUMPING-COOKIE")
     #     pickle.dump(browser.get_cookies(), open(
     #         '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
     #     return True
@@ -707,7 +729,8 @@ def check_authorization(browser, username, method, logger, notify=True):
             except WebDriverException:
                 activity_counts_new = None
 
-        printt("[check] activity_counts: %s, ,activity_counts_new: %s" % (activity_counts, activity_counts_new))
+        printt("[check_authorization] activity_counts: %s, activity_counts_new: %s" % (
+            activity_counts, activity_counts_new))
 
         if activity_counts is None and activity_counts_new is None:
             if notify is True:
