@@ -5,7 +5,7 @@ import lib.environments as env
 
 env.config(version="like-ff-2.1")
 
-SLEEP_BETWEEN_EACH_LIKE = 40
+SLEEP_BETWEEN_EACH_LIKE = 60
 
 tags = ['love', 'instagood', 'photooftheday', 'fashion']
 
