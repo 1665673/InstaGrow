@@ -2,8 +2,6 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="2912bdb4-44c6-4d1d-bba7-653297bdda58" name="Default Changelist" comment="">
-      <change beforePath="$PROJECT_DIR$/lib/apply.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/lib/environments.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/environments.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/lib/patch.py" beforeDir="false" afterPath="$PROJECT_DIR$/lib/patch.py" afterDir="false" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -53,8 +51,8 @@
       <file pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/lib/patch.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="90">
-              <caret line="6" column="1" lean-forward="true" selection-start-line="6" selection-start-column="1" selection-end-line="6" selection-end-column="1" />
+            <state relative-caret-position="165">
+              <caret line="11" column="44" lean-forward="true" selection-start-line="11" selection-start-column="44" selection-end-line="11" selection-end-column="44" />
               <folding>
                 <element signature="e#40#50#0" expanded="true" />
               </folding>
@@ -144,6 +142,7 @@
       <find>printt</find>
       <find>sys.argv</find>
       <find>retrieve_latest</find>
+      <find>reporter</find>
     </findStrings>
     <replaceStrings>
       <replace>printt(</replace>
@@ -155,6 +154,7 @@
       <replace>argv</replace>
       <replace>query_lates</replace>
       <replace>query_latest</replace>
+      <replace>env</replace>
     </replaceStrings>
   </component>
   <component name="Git.Settings">
@@ -252,12 +252,12 @@
       <workItem from="1552974186730" duration="56425000" />
       <workItem from="1553250030909" duration="19679000" />
       <workItem from="1553316165174" duration="606000" />
-      <workItem from="1553317626852" duration="79273000" />
+      <workItem from="1553317626852" duration="79488000" />
     </task>
     <servers />
   </component>
   <component name="TimeTrackingManager">
-    <option name="totallyTimeSpent" value="174380000" />
+    <option name="totallyTimeSpent" value="174595000" />
   </component>
   <component name="ToolWindowManager">
     <frame x="305" y="46" width="1302" height="904" extended-state="0" />
@@ -469,8 +469,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/lib/patch.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="90">
-          <caret line="6" column="1" lean-forward="true" selection-start-line="6" selection-start-column="1" selection-end-line="6" selection-end-column="1" />
+        <state relative-caret-position="165">
+          <caret line="11" column="44" lean-forward="true" selection-start-line="11" selection-start-column="44" selection-end-line="11" selection-end-column="44" />
           <folding>
             <element signature="e#40#50#0" expanded="true" />
           </folding>

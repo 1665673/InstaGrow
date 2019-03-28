@@ -1,6 +1,6 @@
 # guaranteed to work with instapy-0.3.4
 import sys
-from . import environments as reporter
+from . import environments as env
 from . import proxypool
 
 
@@ -9,13 +9,13 @@ from . import proxypool
 #   apply all patches
 #
 def apply():
-    sys.modules['instapy'].InstaPy.reporter = reporter
+    sys.modules['instapy'].InstaPy.env = env
     sys.modules['instapy'].InstaPy.super_print = super_print
     sys.modules['instapy'].InstaPy.proxypool = proxypool
     sys.modules['instapy'].InstaPy.login.__code__ = login.__code__
     sys.modules['instapy'].InstaPy.set_selenium_local_session.__code__ = set_selenium_local_session_patch.__code__
 
-    sys.modules['instapy.login_util'].reporter = reporter
+    sys.modules['instapy.login_util'].env = env
     sys.modules['instapy.login_util'].super_print = super_print
     sys.modules['instapy.login_util'].query_latest = query_latest
     sys.modules['instapy.login_util'].login_user.__code__ = login_user.__code__
@@ -23,7 +23,7 @@ def apply():
     sys.modules['instapy.login_util'].dismiss_get_app_offer.__code__ = dismiss_get_app_offer.__code__
     sys.modules['instapy.login_util'].dismiss_notification_offer.__code__ = dismiss_notification_offer.__code__
 
-    sys.modules['instapy.util'].reporter = reporter
+    sys.modules['instapy.util'].env = env
     sys.modules['instapy.util'].super_print = super_print
     sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
@@ -40,16 +40,16 @@ def apply():
 #
 def super_print(str):
     # print("LOGIN [%d] %s" % (int(time.time()), str))
-    reporter.log(str, title="LOGIN")
+    env.log(str, title="LOGIN")
 
 
 def query_latest(attributes):
-    return reporter.query_latest_attributes(attributes)
+    return env.query_latest_attributes(attributes)
 
 
 def login(self):
     InstaPy.super_print("login(): patched version")
-    self.reporter.event("LOGIN", "BEGIN")
+    self.env.event("LOGIN", "BEGIN")
     """Used to login the user either with the username and password"""
 
     logged_in = False
@@ -67,15 +67,15 @@ def login(self):
             self.password = logged_in[1]
 
     except Exception as e:
-        # self.reporter.event("LOGIN", "ERROR", str(e))
-        # self.reporter.error("login", "exception", str(e))
+        # self.env.event("LOGIN", "ERROR", str(e))
+        # self.env.error("login", "exception", str(e))
         if str(e) == "query timeout":
-            self.reporter.event("LOGIN", "WAITING-TIMEOUT")
+            self.env.event("LOGIN", "WAITING-TIMEOUT")
         else:
             raise
 
     if not logged_in:
-        self.reporter.event("LOGIN", "FAIL")
+        self.env.event("LOGIN", "FAIL")
         message = "Wrong login data!"
         highlight_print(self.username,
                         message,
@@ -85,7 +85,7 @@ def login(self):
         self.aborting = True
 
     else:
-        self.reporter.event("LOGIN", "SUCCESS")
+        self.env.event("LOGIN", "SUCCESS")
         message = "Logged in successfully!"
         highlight_print(self.username,
                         message,
@@ -107,8 +107,8 @@ def login(self):
         # self.following_num = log_following_num(self.browser,
         #                                       self.username,
         #                                       self.logfolder)
-        self.followed_by = self.reporter.get_follower_num(self.browser, self.username)
-        self.reporter.data("followers", self.followed_by)
+        self.followed_by = self.env.get_follower_num(self.browser, self.username)
+        self.env.data("followers", self.followed_by)
 
     return self
 
@@ -123,34 +123,34 @@ def set_selenium_local_session_patch(self):
     #   (4) check if connection is valid immediately after selenium session created
     #
     #
-    query_mode = self.reporter.args().query
-    retry_proxy = self.reporter.args().retry_proxy
-    apply_proxy = self.reporter.args().apply_proxy
+    query_mode = self.env.args().query
+    retry_proxy = self.env.args().retry_proxy
+    apply_proxy = self.env.args().apply_proxy
     using_proxy = retry_proxy or apply_proxy or bool(self.proxy_address)
     proxy_string = None if not self.proxy_address else "%s:%s:%s:%s" % (
         self.proxy_address, self.proxy_port, self.proxy_username, self.proxy_password)
     first_attempt = True
     while True:
-        self.reporter.event("SELENIUM", "CREATING-SESSION")
+        self.env.event("SELENIUM", "CREATING-SESSION")
         #
         #   prepare proxy configuration if using proxy
         #   do necessary query if in query mode
         #
         if using_proxy:
-            self.reporter.event("SELENIUM", "SETTING-UP-PROXY")
+            self.env.event("SELENIUM", "SETTING-UP-PROXY")
             if (not first_attempt) or (not self.proxy_address):
                 if apply_proxy:
                     proxy_string = proxypool.allocate_proxy(proxy_string)
                 elif query_mode:
-                    self.reporter.event("SELENIUM", "WAITING-FOR-PROXY")
-                    latest = self.reporter.query_latest({"proxy": proxy_string})
+                    self.env.event("SELENIUM", "WAITING-FOR-PROXY")
+                    latest = self.env.query_latest({"proxy": proxy_string})
                     proxy_string = latest["proxy"]
                 else:
                     proxy_string = input("input proxy-string:")
 
         # create a session with all required arguments
         self.browser, err_msg = set_selenium_local_session(
-            *self.reporter.parse_proxy_positional(proxy_string),
+            *self.env.parse_proxy_positional(proxy_string),
             # self.proxy_address,
             # self.proxy_port,
             # self.proxy_username,
@@ -170,18 +170,18 @@ def set_selenium_local_session_patch(self):
         # see if session creation failed
         failed = False
         if len(err_msg) > 0:
-            self.reporter.event("SELENIUM", "ERROR-DURING-CREATING-SESSION", {"error": err_msg})
+            self.env.event("SELENIUM", "ERROR-DURING-CREATING-SESSION", {"error": err_msg})
             failed = True
         else:
-            self.reporter.event("SELENIUM", "SESSION-CREATED")
+            self.env.event("SELENIUM", "SESSION-CREATED")
 
         # do further testing if at this point not failed
         exception = None
         if not failed:
             try:
-                self.reporter.event("SELENIUM", "TESTING-CONNECTION")
-                result = self.reporter.test_connection(self.browser)
-                self.reporter.event("SELENIUM", "CONNECTION-VERIFIED", {
+                self.env.event("SELENIUM", "TESTING-CONNECTION")
+                result = self.env.test_connection(self.browser)
+                self.env.event("SELENIUM", "CONNECTION-VERIFIED", {
                     "sessionIP": result["ip"],
                     "instagramResponseLength": len(result["instagramResponse"]),
                     "proxy": proxy_string
@@ -189,7 +189,7 @@ def set_selenium_local_session_patch(self):
                 break
             except Exception as e:
                 exception = e
-                self.reporter.event("SELENIUM", "CONNECTION-INVALID", {
+                self.env.event("SELENIUM", "CONNECTION-INVALID", {
                     "exception": str(e),
                     "proxy": proxy_string
                 })
@@ -207,7 +207,7 @@ def set_selenium_local_session_patch(self):
             # if we are still retrying, then close current browser instance and continue
             first_attempt = False
             self.browser.quit()
-            self.reporter.event("SELENIUM", "RETRY-CREATING-SESSION")
+            self.env.event("SELENIUM", "RETRY-CREATING-SESSION")
 
 
 def login_user(browser,
@@ -230,7 +230,7 @@ def login_user(browser,
     # assert username, 'Username not provided'
     # assert password, 'Password not provided'
     #
-    query_mode = reporter.args().query
+    query_mode = env.args().query
 
     #
     #
@@ -240,7 +240,7 @@ def login_user(browser,
     #
     #
     super_print("[login_user] load cookie")
-    reporter.event("LOGIN", "LOADING-COOKIES")
+    env.event("LOGIN", "LOADING-COOKIES")
     cookie_loaded = False
     try:
         cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
@@ -272,11 +272,11 @@ def login_user(browser,
     except Exception as e:
         super_print("[login_user] fatal error. can't load the login page, check the network connection.")
         super_print("[login_user] quitting...")
-        reporter.event("LOGIN", "FAIL-INVALID-NETWORK")
-        reporter.error(e)
+        env.event("LOGIN", "FAIL-INVALID-NETWORK")
+        env.error(e)
         return False
     super_print("[login_user] login page fully loaded")
-    reporter.event("LOGIN", "PAGE-LOADED")
+    env.event("LOGIN", "PAGE-LOADED")
 
     # include sleep(1) to prevent getting stuck on google.com
     # sleep(1)
@@ -392,7 +392,7 @@ def login_user(browser,
     page_after_login = ""
     first_attempt = True
     while True:
-        reporter.event("LOGIN", "WAITING-FOR-CREDENTIALS")
+        env.event("LOGIN", "WAITING-FOR-CREDENTIALS")
         # read username/password
         if not first_attempt or (not username or not password):
             if query_mode:
@@ -429,7 +429,7 @@ def login_user(browser,
          .move_to_element(button_login)
          .click()
          .perform())
-        reporter.event("LOGIN", "CREDENTIALS-SENT")
+        env.event("LOGIN", "CREDENTIALS-SENT")
 
         #
         #   4 different conditions, after submitting credentials
@@ -459,7 +459,7 @@ def login_user(browser,
                 first_attempt = False
                 # username = ""
                 # password = ""
-                reporter.event("LOGIN", "WRONG-CREDENTIALS")
+                env.event("LOGIN", "WRONG-CREDENTIALS")
                 page_after_login = "LOGIN"
                 continue
             elif indicator_class == "_6q-tv":
@@ -499,7 +499,7 @@ def login_user(browser,
         #
 
         # collection page elements and analyse situation
-        reporter.event("LOGIN", "DETECTING-AUTHENTICATION-CHOICES")
+        env.event("LOGIN", "DETECTING-AUTHENTICATION-CHOICES")
         # choice0 = None
         # choice1 = None
         # try:
@@ -522,7 +522,7 @@ def login_user(browser,
             choices = browser.find_elements_by_xpath("//label[@for='choice_0']|//label[@for='choice_1']")
             send_code_button = browser.find_element_by_xpath("//button[text()='Send Security Code']")
         except Exception:
-            reporter.event("LOGIN", "CANT-FIND-SECURITY-CODE-CONTROLS")
+            env.event("LOGIN", "CANT-FIND-SECURITY-CODE-CONTROLS")
             return False
 
         choice_made = None
@@ -530,7 +530,7 @@ def login_user(browser,
         if len(choices) > 1:
             # ask for a choice
             if query_mode:
-                reporter.event("LOGIN", "WAITING-FOR-CHOICE-TO-SEND-CODE", {"choices": [
+                env.event("LOGIN", "WAITING-FOR-CHOICE-TO-SEND-CODE", {"choices": [
                     {"name": "0", "value": choices[0].text},
                     {"name": "1", "value": choices[1].text}
                 ]})
@@ -564,7 +564,7 @@ def login_user(browser,
          .click()
          .perform())
         super_print("[login_user] a security code has been sent to " + choice_text)
-        reporter.event("LOGIN", "SECURITY-CODE-REQUESTED")
+        env.event("LOGIN", "SECURITY-CODE-REQUESTED")
 
         # wait for security code page to load
         input_code = None
@@ -580,7 +580,7 @@ def login_user(browser,
         # read and send security code
         security_code = None
         while True:
-            reporter.event("LOGIN", "WAITING-FOR-SECURITY-CODE", {"choice": choice_text})
+            env.event("LOGIN", "WAITING-FOR-SECURITY-CODE", {"choice": choice_text})
             if query_mode:
                 try:
                     latest = query_latest({"securityCode": security_code})
@@ -601,7 +601,7 @@ def login_user(browser,
              .move_to_element(button_submit)
              .click()
              .perform())
-            reporter.event("LOGIN", "SECURITY-CODE-SENT")
+            env.event("LOGIN", "SECURITY-CODE-SENT")
 
             try:
                 success_selector = "//img[@class='_6q-tv']"
@@ -612,7 +612,7 @@ def login_user(browser,
             except Exception:
                 # correct security code
                 super_print("[login_user] wrong security code, please try again")
-                reporter.event("LOGIN", "WRONG-SECURITY-CODE")
+                env.event("LOGIN", "WRONG-SECURITY-CODE")
                 continue
         #
         #
@@ -626,7 +626,7 @@ def login_user(browser,
     elif page_after_login == "SUSPICIOUS":
         if bypass_suspicious_attempt:
             super_print("[login_user] no indication of what specific location we're at, let's bypass-suspicious-page")
-            reporter.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
+            env.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
             if not bypass_suspicious_login(browser, bypass_with_mobile):
                 return False
         else:
@@ -662,7 +662,7 @@ def login_user(browser,
     # dismiss_get_app_offer(browser, logger)
     # dismiss_notification_offer(browser, logger)
     super_print("[login_user] dump cookie")
-    reporter.event("LOGIN", "DUMPING-COOKIES")
+    env.event("LOGIN", "DUMPING-COOKIES")
     pickle.dump(browser.get_cookies(), open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
     return [username, password]
 
@@ -670,7 +670,7 @@ def login_user(browser,
     # nav = browser.find_elements_by_xpath('//nav')
     # if len(nav) == 2:
     #     # create cookie for username
-    #     reporter.event("LOGIN","DUMPING-COOKIE")
+    #     env.event("LOGIN","DUMPING-COOKIE")
     #     pickle.dump(browser.get_cookies(), open(
     #         '{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
     #     return True
