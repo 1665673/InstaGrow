@@ -1,8 +1,8 @@
 import requests
-import json
 import sys
 import io
 import time
+import json
 
 
 #
@@ -53,10 +53,11 @@ class StreamHub(io.StringIO):
 class Reporter:
     def __init__(self):
         self.id = None
-        self.fields = {}
+        self.attributes = {}
         self.checkin_url = None
-        self.report_url = None
+        self.access_url = None
         self.payload = {"entries": {}}
+        self.headers = {'content-type': 'application/json'}
 
     def __merge(self, array, entry):
         if entry not in self.payload["entries"]:
@@ -66,33 +67,55 @@ class Reporter:
         self.payload["time"] = int(time.time())
 
     def __post(self):
-        if not self.id or not self.report_url or len(self.payload.keys()) == 0:
+        if not self.id or not self.access_url or len(self.payload.keys()) == 0:
             return
-        headers = {'content-type': 'application/json'}
         self.payload["id"] = self.id
-
+        data = self.payload
         try:
-            requests.post(url=self.report_url, data=json.dumps(self.payload), headers=headers)
+            requests.post(url=self.access_url, data=json.dumps(data), headers=self.headers)
         except Exception as e:
             pass
         finally:
             self.payload = {"entries": {}}
 
-    def checkin(self, url, fields):
-        self.fields = fields
+    def checkin(self, url, attributes):
+        self.attributes = attributes
         self.checkin_url = url
+        data = attributes
         try:
-            res = requests.post(url=url, data=fields).json()
+            res = requests.post(url=url, data=json.dumps(data), headers=self.headers).json()
             self.id = res["id"]
-            self.report_url = res["reportUrl"]
+            self.access_url = res["accessUrl"]
         except Exception as e:
             pass
+
+    def update(self, attributes):
+        if not self.id or not self.access_url or len(attributes.keys()) == 0:
+            return
+        data = {"id": self.id, "attributes": attributes}
+        try:
+            requests.post(url=self.access_url, data=json.dumps(data), headers=self.headers)
+        except Exception as e:
+            pass
+
+    def retrieve(self, attributes):
+        if not self.id or not self.access_url or len(attributes) == 0:
+            return
+        data = {"id": self.id, "retrieve": attributes}
+        try:
+            return requests.post(url=self.access_url, data=json.dumps(data), headers=self.headers).json()
+        except Exception as e:
+            pass
+        return {}
 
     def send(self, buffer, entry="messages"):
         buffer = buffer.rstrip()
         if buffer == "":
             return
         self.push([buffer], entry)
+
+    def json(self, json, entry="json"):
+        self.push([json], entry)
 
     def push(self, array, entry):
         self.__merge(array, entry)

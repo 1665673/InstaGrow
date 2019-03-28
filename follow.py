@@ -1,7 +1,7 @@
 from instapy import InstaPy
 from instapy import smart_run
 import time
-import environments as env
+import lib.environments as env
 
 env.config(version="follow-ff-2.1")
 
@@ -30,7 +30,7 @@ with smart_run(session):
                                        interact=False)
                 time.sleep(SLEEP_BETWEEN_EACH_FOLLOW)
             except Exception as e:
-                env.error("follow_by_list", "exception", e)
+                env.error("follow_by_list", "exception", str(e))
 
         env.log("[sleep {0} seconds before unfollowing]".format(SLEEP_AFTER_ALL_FOLLOW))
         time.sleep(SLEEP_AFTER_ALL_FOLLOW)
@@ -43,4 +43,4 @@ with smart_run(session):
                                        sleep_delay=1)
                 time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
             except Exception as e:
-                env.error("unfollow_users", "exception", e)
+                env.error("unfollow_users", "exception", str(e))
