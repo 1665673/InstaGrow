@@ -29,8 +29,8 @@ patch.apply()
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER")
-
-# MACROSCHECKIN_URL = SERVER + "/admin/check-in"
+CHECKIN_URL = SERVER + "/admin/check-in"
+# MACROS
 # DEFAULT_REPORT_FIELDS = {
 #     "instagramUser": "N/A",
 #     "systemUser": "N/A",

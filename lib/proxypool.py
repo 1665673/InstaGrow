@@ -14,7 +14,7 @@ SERVER = os.getenv("SERVER")
 apply_proxy_url = SERVER + "/admin/proxy/apply"
 
 
-def apply_proxy(current_proxy=None):
+def allocate_proxy(current_proxy=None):
     url = apply_proxy_url + "/" + current_proxy if current_proxy else apply_proxy_url
     proxy = requests.get(url=url).json()
     if "string" in proxy:
@@ -36,4 +36,4 @@ if not is_module:
     parser = argparse.ArgumentParser()
     parser.add_argument("current_proxy", nargs='?', type=str)
     args = parser.parse_args()
-    print(apply_proxy(args.current_proxy))
+    print(allocate_proxy(args.current_proxy))

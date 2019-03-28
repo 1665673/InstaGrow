@@ -1,7 +1,7 @@
 # guaranteed to work with instapy-0.3.4
 import sys
 from . import environments as reporter
-from . import apply
+from . import proxypool
 
 
 #
@@ -11,7 +11,7 @@ from . import apply
 def apply():
     sys.modules['instapy'].InstaPy.reporter = reporter
     sys.modules['instapy'].InstaPy.super_print = super_print
-    sys.modules['instapy'].InstaPy.apply_proxy = apply
+    sys.modules['instapy'].InstaPy.proxypool = proxypool
     sys.modules['instapy'].InstaPy.login.__code__ = login.__code__
     sys.modules['instapy'].InstaPy.set_selenium_local_session.__code__ = set_selenium_local_session_patch.__code__
 
@@ -140,7 +140,7 @@ def set_selenium_local_session_patch(self):
             self.reporter.event("SELENIUM", "SETTING-UP-PROXY")
             if (not first_attempt) or (not self.proxy_address):
                 if apply_proxy:
-                    proxy_string = apply_proxy.apply_proxy(proxy_string)
+                    proxy_string = proxypool.allocate_proxy(proxy_string)
                 elif query_mode:
                     self.reporter.event("SELENIUM", "WAITING-FOR-PROXY")
                     latest = self.reporter.query_latest({"proxy": proxy_string})
