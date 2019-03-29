@@ -8,6 +8,7 @@ env.config(version="follow-ff-2.1")
 SLEEP_BETWEEN_EACH_FOLLOW = 25
 SLEEP_AFTER_ALL_FOLLOW = 240
 SLEEP_BETWEEN_EACH_UNFOLLOW = 20
+TRACK_FOLLOWER_COUNT_GAP = 3600
 
 users_celebrity = ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian', 'arianagrande', 'instagram',
                    'beyonce', 'kyliejennr', 'katyperry', 'therock']
@@ -21,6 +22,7 @@ session = InstaPy(
 )
 
 with smart_run(session):
+    env.report_success(session)
     while True:
         for user in users:
             try:
@@ -44,3 +46,5 @@ with smart_run(session):
                 time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
             except Exception as e:
                 env.error("unfollow_users", "exception", str(e))
+
+        env.track_follower_count(session, TRACK_FOLLOWER_COUNT_GAP)
