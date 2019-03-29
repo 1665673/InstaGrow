@@ -1,5 +1,6 @@
 # guaranteed to work with instapy-0.3.4
 import sys
+from contextlib import contextmanager
 from . import environments as env
 from . import proxypool
 
@@ -25,6 +26,7 @@ def apply():
 
     sys.modules['instapy.util'].env = env
     sys.modules['instapy.util'].super_print = super_print
+    # sys.modules['instapy.util'].smart_run.__code__ = smart_run.__code__
     sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
     sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
@@ -141,7 +143,10 @@ def set_selenium_local_session_patch(self):
             if (not first_attempt) or (not self.proxy_address):
                 if alloc_proxy:
                     proxy = self.proxypool.allocate_proxy(proxy_string)
-                    InstaPy.super_print("[selenium] proxy allocated. it has: "
+                    if "string" not in proxy:
+                        InstaPy.env.event("SELENIUM", "ALLOCATE-PROXY-FAILED")
+                        exit(0)
+                    InstaPy.super_print("[selenium] proxy allocated: "
                                         "%d current-clients, %d failed-attempts, %d history-connections" %
                                         (proxy["clientsCount"], proxy["failsCount"],
                                          proxy["historyCount"]))
@@ -152,6 +157,7 @@ def set_selenium_local_session_patch(self):
                     proxy_string = latest["proxy"]
                 else:
                     proxy_string = input("input proxy-string:")
+            self.proxy_string = proxy_string
 
         # create a session with all required arguments
         self.browser, err_msg = set_selenium_local_session(
