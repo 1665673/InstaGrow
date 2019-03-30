@@ -16,7 +16,7 @@ def like_by_locations_patch(self,
     if self.aborting:
         return self
 
-    liked_img =
+    liked_img = 0
     already_liked = 0
     inap_img = 0
     commented = 0
@@ -220,4 +220,3 @@ def like_by_locations_patch(self,
     self.not_valid_users += not_valid_users
 
     return self
-
