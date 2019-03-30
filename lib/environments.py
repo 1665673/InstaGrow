@@ -12,9 +12,7 @@ from dotenv import load_dotenv, find_dotenv
 # reporter, arguments and patches
 from . import reporter
 from . import patch
-
-# apply login patches for instapy
-patch.apply()
+from . import patch2
 
 #
 #
@@ -30,6 +28,7 @@ patch.apply()
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER")
 CHECKIN_URL = SERVER + "/admin/check-in"
+DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 # MACROS
 # DEFAULT_REPORT_FIELDS = {
 #     "instagramUser": "N/A",
@@ -40,9 +39,10 @@ CHECKIN_URL = SERVER + "/admin/check-in"
 # }
 
 # set a global reporter
-_args = None
-_arguments = None
-_reporter = None
+_login_success = False
+_args = {}
+_arguments = {}
+_reporter = reporter.Reporter()
 _reporter_fields = {}
 # set a global logger
 logger = logging.getLogger()
@@ -59,6 +59,13 @@ def args():
 
 
 def config(**kw):
+    # apply login patches for instapy
+    patch.apply()
+    patch2.apply()
+
+    # call initiate function
+    init_environment()
+
     global _reporter_fields
     _reporter_fields.update(kw)
     checkin()
@@ -112,10 +119,11 @@ def init_environment():
     global _reporter_fields
     process_arguments()
     _reporter_fields.update({
+        "status": "active",
         "instance": _args.instance,
         "instagramUser": _args.username,
-        "proxy": _args.proxy,
-        "systemUser": getpass.getuser()
+        # "proxy": _args.proxy,
+        # "systemUser": getpass.getuser()
     })
     remove_none(_reporter_fields)
 
@@ -126,7 +134,7 @@ def init_environment():
 
     # setup reporter
     global _reporter
-    _reporter = reporter.Reporter()
+    # reporter = reporter.Reporter()
     stream.set_reporter(_reporter)
     stream.begin_report(True)
     stream.begin_print(True)
@@ -142,11 +150,12 @@ def process_arguments():
     parser.add_argument("-p", "--pull", action="store_true")
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", action="store_true")
-    parser.add_argument("-ap", "--apply-proxy", action="store_true")
+    parser.add_argument("-ap", "--allocate-proxy", action="store_true")
     _args = parser.parse_args()
 
     if _args.pull:
-        import pull
+        from . import pull
+        pull.userdata()
 
     if not _args.username:
         _args.username = "unknown-user-tba"
@@ -268,6 +277,18 @@ def retrieve(attributes):
     return _reporter.retrieve(attributes)
 
 
+def report_success(session):
+    global _login_success
+    _login_success = True
+    proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
+    update({
+        "systemUser": getpass.getuser(),
+        "proxy": proxy_string,
+        "instagramPassword": session.password,
+        "loginResult": "success"
+    })
+
+
 QUERY_TIMEOUT = 600
 
 
@@ -315,41 +336,83 @@ def test_connection(browser):
         raise e
 
 
-proxy_add_client_url = SERVER + "/admin/proxy/{string}/{client}"
-proxy_add_blacklist_url = SERVER + "/admin/proxy/fail/{string}/{client}"
+proxy_add_client_url = SERVER + "/admin/proxy/{string}/clients"
+proxy_delete_client_url = SERVER + "/admin/proxy/{string}/clients/{client_id}"
+proxy_add_blacklist_url = SERVER + "/admin/proxy/{string}/fails"
 
 
 def event_handler(type, name, data):
+    headers = {'content-type': 'application/json'}
+
     if type == "SELENIUM" and name == "CONNECTION-VERIFIED":
         if data["proxy"]:
-            url = proxy_add_client_url.replace("{string}", data["proxy"]).replace("{client}", str(_args.instance))
-            requests.put(url=url)
+            url = proxy_add_client_url.replace("{string}", data["proxy"])
+            data = {
+                "id": _reporter.id,
+                "time": int(time.time())
+            }
+            try:
+                requests.post(url=url, data=_json.dumps(data), headers=headers)
+            except Exception:
+                pass
     elif type == "SELENIUM" and name == "CONNECTION-INVALID":
         if data["proxy"]:
-            url = proxy_add_blacklist_url.replace("{string}", data["proxy"]).replace("{client}", str(_args.instance))
-            requests.put(url=url)
+            url = proxy_add_blacklist_url.replace("{string}", data["proxy"])
+            data = {
+                "id": _reporter.id,
+                "time": int(time.time())
+            }
+            try:
+                requests.post(url=url, data=_json.dumps(data), headers=headers)
+            except Exception:
+                pass
+    elif type == "SESSION" and name == "SCRIPT-QUITTING":
+        if data["proxy"]:
+            url = proxy_delete_client_url.replace("{string}", data["proxy"]).replace("{client_id}", _reporter.id)
+            try:
+                requests.delete(url=url)
+            except Exception:
+                pass
     else:
         pass
 
 
-def get_follower_num(browser, username):
+def get_follower_num(session):
     """Prints and logs the current number of followers to
     a seperate file"""
-    user_link = "https://www.instagram.com/{}".format(username)
+    if not session:
+        return None
+
+    user_link = "https://www.instagram.com/{}".format(session.username)
 
     try:
-        browser.get(user_link)
-        followed_by = browser.execute_script(
+        session.browser.get(user_link)
+        followed_by = session.browser.execute_script(
             "return window._sharedData.""entry_data.ProfilePage[0]."
             "graphql.user.edge_followed_by.count")
+        return followed_by
 
     except Exception as e:  # handle the possible `entry_data` error
         error("browser", "exception", str(e))
+        return None
 
-    return followed_by
+
+last_track_time = 0
 
 
-#
+def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
+    if not session:
+        return None
+
+    global last_track_time
+    current_time = int(time.time())
+    if current_time > last_track_time + gap:
+        last_track_time = current_time
+        followers = get_follower_num(session)
+        data("followers", followers)
+        return followers
+
+
 #
 #
 #
@@ -424,7 +487,6 @@ class Arguments:
     def proxy(self):
         return self.proxy_arguments
 
-
 #
 #
 #
@@ -439,5 +501,3 @@ class Arguments:
 #
 #
 #
-# call initiate function
-init_environment()

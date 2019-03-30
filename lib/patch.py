@@ -1,5 +1,6 @@
 # guaranteed to work with instapy-0.3.4
 import sys
+from contextlib import contextmanager
 from . import environments as env
 from . import proxypool
 
@@ -12,6 +13,7 @@ def apply():
     sys.modules['instapy'].InstaPy.env = env
     sys.modules['instapy'].InstaPy.super_print = super_print
     sys.modules['instapy'].InstaPy.proxypool = proxypool
+    sys.modules['instapy'].InstaPy.end.__code__ = end.__code__
     sys.modules['instapy'].InstaPy.login.__code__ = login.__code__
     sys.modules['instapy'].InstaPy.set_selenium_local_session.__code__ = set_selenium_local_session_patch.__code__
 
@@ -25,6 +27,7 @@ def apply():
 
     sys.modules['instapy.util'].env = env
     sys.modules['instapy.util'].super_print = super_print
+    # sys.modules['instapy.util'].smart_run.__code__ = smart_run.__code__
     sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
     sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
@@ -38,18 +41,54 @@ def apply():
 #
 #
 #
+
+
 def super_print(str):
     # print("LOGIN [%d] %s" % (int(time.time()), str))
-    env.log(str, title="LOGIN")
+    env.log(str, title="INFO ")
 
 
 def query_latest(attributes):
     return env.query_latest_attributes(attributes)
 
 
+def end(self, threaded_session=False):
+    InstaPy.super_print("end(): patched version")
+    InstaPy.super_print("[end] script is quitting")
+    InstaPy.env.event("SESSION", "SCRIPT-QUITTING", {"proxy": self.proxy_string})
+
+    """Closes the current session"""
+    Settings.InstaPy_is_running = False
+    close_browser(self.browser, threaded_session, self.logger)
+
+    with interruption_handler():
+        # close virtual display
+        if self.nogui:
+            self.display.stop()
+
+        # write useful information
+        dump_follow_restriction(self.username,
+                                self.logger,
+                                self.logfolder)
+        dump_record_activity(self.username,
+                             self.logger,
+                             self.logfolder)
+
+        # with open('{}followed.txt'.format(self.logfolder), 'w') \
+        #        as followFile:
+        #    followFile.write(str(self.followed))
+
+        # output live stats before leaving
+        self.live_report()
+
+        message = "Session ended!"
+        highlight_print(self.username, message, "end", "info", self.logger)
+        print("\n\n")
+
+
 def login(self):
     InstaPy.super_print("login(): patched version")
-    self.env.event("LOGIN", "BEGIN")
+    InstaPy.env.event("LOGIN", "BEGIN")
     """Used to login the user either with the username and password"""
 
     logged_in = False
@@ -63,19 +102,23 @@ def login(self):
                                self.bypass_suspicious_attempt,
                                self.bypass_with_mobile)
         if logged_in:
+            #
+            #   synchronize user information in InstaPy object
+            #
             self.username = logged_in[0]
             self.password = logged_in[1]
+            self.logger = self.logger = self.get_instapy_logger(self.show_logs)
 
     except Exception as e:
-        # self.env.event("LOGIN", "ERROR", str(e))
-        # self.env.error("login", "exception", str(e))
+        # InstaPy.env.event("LOGIN", "ERROR", str(e))
+        # InstaPy.env.error("login", "exception", str(e))
         if str(e) == "query timeout":
-            self.env.event("LOGIN", "WAITING-TIMEOUT")
+            InstaPy.env.event("LOGIN", "WAITING-TIMEOUT")
         else:
             raise
 
     if not logged_in:
-        self.env.event("LOGIN", "FAIL")
+        InstaPy.env.event("LOGIN", "FAIL")
         message = "Wrong login data!"
         highlight_print(self.username,
                         message,
@@ -85,7 +128,7 @@ def login(self):
         self.aborting = True
 
     else:
-        self.env.event("LOGIN", "SUCCESS")
+        InstaPy.env.event("LOGIN", "SUCCESS")
         message = "Logged in successfully!"
         highlight_print(self.username,
                         message,
@@ -107,13 +150,13 @@ def login(self):
         # self.following_num = log_following_num(self.browser,
         #                                       self.username,
         #                                       self.logfolder)
-        self.followed_by = self.env.get_follower_num(self.browser, self.username)
-        self.env.data("followers", self.followed_by)
+        InstaPy.env.track_follower_count(self)
 
     return self
 
 
 def set_selenium_local_session_patch(self):
+    InstaPy.super_print("set_selenium_local_session_patch(): patched version")
     #
     #
     #   patch
@@ -123,65 +166,83 @@ def set_selenium_local_session_patch(self):
     #   (4) check if connection is valid immediately after selenium session created
     #
     #
-    query_mode = self.env.args().query
-    retry_proxy = self.env.args().retry_proxy
-    apply_proxy = self.env.args().apply_proxy
-    using_proxy = retry_proxy or apply_proxy or bool(self.proxy_address)
+    query_mode = InstaPy.env.args().query
+    retry_proxy = InstaPy.env.args().retry_proxy
+    alloc_proxy = InstaPy.env.args().allocate_proxy
+    using_proxy = retry_proxy or alloc_proxy or bool(self.proxy_address)
+
     proxy_string = None if not self.proxy_address else "%s:%s:%s:%s" % (
         self.proxy_address, self.proxy_port, self.proxy_username, self.proxy_password)
+    self.proxy_string = None
     first_attempt = True
     while True:
-        self.env.event("SELENIUM", "CREATING-SESSION")
+        InstaPy.env.event("SELENIUM", "BEGIN-CREATING-SESSION")
         #
         #   prepare proxy configuration if using proxy
         #   do necessary query if in query mode
         #
         if using_proxy:
-            self.env.event("SELENIUM", "SETTING-UP-PROXY")
+            InstaPy.super_print("[selenium] setting up proxy")
             if (not first_attempt) or (not self.proxy_address):
-                if apply_proxy:
-                    proxy_string = proxypool.allocate_proxy(proxy_string)
+                if alloc_proxy:
+                    proxy = self.proxypool.allocate_proxy(proxy_string)
+                    if "string" not in proxy:
+                        InstaPy.env.event("SELENIUM", "ALLOCATE-PROXY-FAILED")
+                        exit(0)
+                    InstaPy.super_print("[selenium] proxy allocated: "
+                                        "%d current-clients, %d failed-attempts, %d history-connections" %
+                                        (proxy["clientsCount"], proxy["failsCount"],
+                                         proxy["historyCount"]))
+                    proxy_string = proxy["string"]
                 elif query_mode:
-                    self.env.event("SELENIUM", "WAITING-FOR-PROXY")
-                    latest = self.env.query_latest({"proxy": proxy_string})
+                    InstaPy.env.event("SELENIUM", "WAITING-FOR-PROXY")
+                    latest = InstaPy.env.query_latest({"proxy": proxy_string})
                     proxy_string = latest["proxy"]
                 else:
                     proxy_string = input("input proxy-string:")
+            self.proxy_string = proxy_string
 
         # create a session with all required arguments
-        self.browser, err_msg = set_selenium_local_session(
-            *self.env.parse_proxy_positional(proxy_string),
-            # self.proxy_address,
-            # self.proxy_port,
-            # self.proxy_username,
-            # self.proxy_password,
-            self.proxy_chrome_extension,
-            self.headless_browser,
-            self.use_firefox,
-            self.browser_profile_path,
-            # Replaces
-            # browser User
-            # Agent from
-            # "HeadlessChrome".
-            self.disable_image_load,
-            self.page_delay,
-            self.logger)
+        failed = False
+        exception = None
+        err_msg=''
+        try:
+            self.browser, err_msg = set_selenium_local_session(
+                *InstaPy.env.parse_proxy_positional(proxy_string),
+                # self.proxy_address,
+                # self.proxy_port,
+                # self.proxy_username,
+                # self.proxy_password,
+                self.proxy_chrome_extension,
+                self.headless_browser,
+                self.use_firefox,
+                self.browser_profile_path,
+                # Replaces
+                # browser User
+                # Agent from
+                # "HeadlessChrome".
+                self.disable_image_load,
+                self.page_delay,
+                self.logger)
+        except Exception as e:
+            exception = e
+            failed = True
+
+        if len(err_msg) > 0:
+            failed = True
 
         # see if session creation failed
-        failed = False
-        if len(err_msg) > 0:
-            self.env.event("SELENIUM", "ERROR-DURING-CREATING-SESSION", {"error": err_msg})
-            failed = True
+        if failed:
+            InstaPy.env.event("SELENIUM", "ERROR-DURING-CREATING-SESSION", {"error": err_msg})
         else:
-            self.env.event("SELENIUM", "SESSION-CREATED")
+            InstaPy.env.event("SELENIUM", "SESSION-CREATED")
 
         # do further testing if at this point not failed
-        exception = None
         if not failed:
             try:
-                self.env.event("SELENIUM", "TESTING-CONNECTION")
-                result = self.env.test_connection(self.browser)
-                self.env.event("SELENIUM", "CONNECTION-VERIFIED", {
+                InstaPy.env.event("SELENIUM", "TESTING-CONNECTION")
+                result = InstaPy.env.test_connection(self.browser)
+                InstaPy.env.event("SELENIUM", "CONNECTION-VERIFIED", {
                     "sessionIP": result["ip"],
                     "instagramResponseLength": len(result["instagramResponse"]),
                     "proxy": proxy_string
@@ -189,7 +250,7 @@ def set_selenium_local_session_patch(self):
                 break
             except Exception as e:
                 exception = e
-                self.env.event("SELENIUM", "CONNECTION-INVALID", {
+                InstaPy.env.event("SELENIUM", "CONNECTION-INVALID", {
                     "exception": str(e),
                     "proxy": proxy_string
                 })
@@ -207,7 +268,7 @@ def set_selenium_local_session_patch(self):
             # if we are still retrying, then close current browser instance and continue
             first_attempt = False
             self.browser.quit()
-            self.env.event("SELENIUM", "RETRY-CREATING-SESSION")
+            InstaPy.env.event("SELENIUM", "RETRY-CREATING-SESSION")
 
 
 def login_user(browser,
@@ -239,7 +300,7 @@ def login_user(browser,
     #   load cookie before doing anything else
     #
     #
-    super_print("[login_user] load cookie")
+    super_print("[login_user] loading cookies")
     env.event("LOGIN", "LOADING-COOKIES")
     cookie_loaded = False
     try:
@@ -273,7 +334,7 @@ def login_user(browser,
         super_print("[login_user] fatal error. can't load the login page, check the network connection.")
         super_print("[login_user] quitting...")
         env.event("LOGIN", "FAIL-INVALID-NETWORK")
-        env.error(e)
+        env.error(str(e))
         return False
     super_print("[login_user] login page fully loaded")
     env.event("LOGIN", "PAGE-LOADED")
@@ -392,10 +453,10 @@ def login_user(browser,
     page_after_login = ""
     first_attempt = True
     while True:
-        env.event("LOGIN", "WAITING-FOR-CREDENTIALS")
         # read username/password
         if not first_attempt or (not username or not password):
             if query_mode:
+                env.event("LOGIN", "WAITING-FOR-CREDENTIALS")
                 # query database for latest credentials
                 try:
                     latest = query_latest({"instagramUser": username, "instagramPassword": password})
