@@ -5,8 +5,77 @@ from . import environments as env
 
 def apply():
     sys.modules['instapy'].InstaPy.like_by_locations.__code__ = like_by_locations_patch.__code__
+    sys.modules['instapy'].InstaPy.unfollow_users.__code__ = unfollow_users.__code__
     sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
     sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
+
+def unfollow_users(self,
+                   amount=10,
+                   customList=(False, [], "all"),
+                   InstapyFollowed=(False, "all"),
+                   nonFollowers=False,
+                   allFollowing=False,
+                   style="FIFO",
+                   unfollow_after=None,
+                   delay_followbackers=0,  # 864000 = 10 days, 0 = don't delay
+                   sleep_delay=600):
+    """Unfollows (default) 10 users from your following list"""
+
+    if self.aborting:
+        return self
+
+    message = "Starting to unfollow users.."
+    highlight_print(self.username, message,
+                    "feature", "info", self.logger)
+
+    if unfollow_after is not None:
+        if not python_version().startswith(('2.7', '3')):
+            self.logger.warning(
+                "`unfollow_after` parameter is not"
+                " available for Python versions below 2.7")
+            unfollow_after = None
+
+    self.automatedFollowedPool = set_automated_followed_pool(
+        self.username,
+        unfollow_after,
+        self.logger,
+        self.logfolder,
+        delay_followbackers)
+
+    try:
+        unfollowed = unfollow(self.browser,
+                              self.username,
+                              amount,
+                              customList,
+                              InstapyFollowed,
+                              nonFollowers,
+                              allFollowing,
+                              style,
+                              self.automatedFollowedPool,
+                              self.relationship_data,
+                              self.dont_include,
+                              self.white_list,
+                              sleep_delay,
+                              self.jumps,
+                              delay_followbackers,
+                              self.logger,
+                              self.logfolder)
+        self.logger.info(
+            "--> Total people unfollowed : {}\n".format(unfollowed))
+        self.unfollowed += unfollowed
+
+    except Exception as exc:
+        if isinstance(exc, RuntimeWarning):
+            self.logger.warning(
+                u'Warning: {} , stopping unfollow_users'.format(exc))
+            return self
+
+        else:
+            self.logger.error('Sorry, an error occurred: {}'.format(exc))
+            return self
+
+    return self
+
 
 def follow_user_patch(browser, track, login, user_name, button, blacklist, logger,
                 logfolder):
