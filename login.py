@@ -13,4 +13,3 @@ session = InstaPy(
 
 with smart_run(session):
     env.report_success(session)
-    env.event("LOGIN", "SCRIPT-QUITTING")

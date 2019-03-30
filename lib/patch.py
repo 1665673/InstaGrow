@@ -13,6 +13,7 @@ def apply():
     sys.modules['instapy'].InstaPy.env = env
     sys.modules['instapy'].InstaPy.super_print = super_print
     sys.modules['instapy'].InstaPy.proxypool = proxypool
+    sys.modules['instapy'].InstaPy.end.__code__ = end.__code__
     sys.modules['instapy'].InstaPy.login.__code__ = login.__code__
     sys.modules['instapy'].InstaPy.set_selenium_local_session.__code__ = set_selenium_local_session_patch.__code__
 
@@ -49,6 +50,40 @@ def query_latest(attributes):
     return env.query_latest_attributes(attributes)
 
 
+def end(self, threaded_session=False):
+    InstaPy.super_print("end(): patched version")
+    InstaPy.super_print("[end] script is quitting")
+    InstaPy.env.event("SESSION", "SCRIPT-QUITTING", {"proxy": self.proxy_string})
+
+    """Closes the current session"""
+    Settings.InstaPy_is_running = False
+    close_browser(self.browser, threaded_session, self.logger)
+
+    with interruption_handler():
+        # close virtual display
+        if self.nogui:
+            self.display.stop()
+
+        # write useful information
+        dump_follow_restriction(self.username,
+                                self.logger,
+                                self.logfolder)
+        dump_record_activity(self.username,
+                             self.logger,
+                             self.logfolder)
+
+        # with open('{}followed.txt'.format(self.logfolder), 'w') \
+        #        as followFile:
+        #    followFile.write(str(self.followed))
+
+        # output live stats before leaving
+        self.live_report()
+
+        message = "Session ended!"
+        highlight_print(self.username, message, "end", "info", self.logger)
+        print("\n\n")
+
+
 def login(self):
     InstaPy.super_print("login(): patched version")
     InstaPy.env.event("LOGIN", "BEGIN")
@@ -65,8 +100,12 @@ def login(self):
                                self.bypass_suspicious_attempt,
                                self.bypass_with_mobile)
         if logged_in:
+            #
+            #   synchronize user information in InstaPy object
+            #
             self.username = logged_in[0]
             self.password = logged_in[1]
+            self.logger = self.logger = self.get_instapy_logger(self.show_logs)
 
     except Exception as e:
         # InstaPy.env.event("LOGIN", "ERROR", str(e))
@@ -129,8 +168,10 @@ def set_selenium_local_session_patch(self):
     retry_proxy = InstaPy.env.args().retry_proxy
     alloc_proxy = InstaPy.env.args().allocate_proxy
     using_proxy = retry_proxy or alloc_proxy or bool(self.proxy_address)
+
     proxy_string = None if not self.proxy_address else "%s:%s:%s:%s" % (
         self.proxy_address, self.proxy_port, self.proxy_username, self.proxy_password)
+    self.proxy_string = None
     first_attempt = True
     while True:
         InstaPy.env.event("SELENIUM", "BEGIN-CREATING-SESSION")
@@ -160,34 +201,40 @@ def set_selenium_local_session_patch(self):
             self.proxy_string = proxy_string
 
         # create a session with all required arguments
-        self.browser, err_msg = set_selenium_local_session(
-            *InstaPy.env.parse_proxy_positional(proxy_string),
-            # self.proxy_address,
-            # self.proxy_port,
-            # self.proxy_username,
-            # self.proxy_password,
-            self.proxy_chrome_extension,
-            self.headless_browser,
-            self.use_firefox,
-            self.browser_profile_path,
-            # Replaces
-            # browser User
-            # Agent from
-            # "HeadlessChrome".
-            self.disable_image_load,
-            self.page_delay,
-            self.logger)
+        failed = False
+        exception = None
+        try:
+            self.browser, err_msg = set_selenium_local_session(
+                *InstaPy.env.parse_proxy_positional(proxy_string),
+                # self.proxy_address,
+                # self.proxy_port,
+                # self.proxy_username,
+                # self.proxy_password,
+                self.proxy_chrome_extension,
+                self.headless_browser,
+                self.use_firefox,
+                self.browser_profile_path,
+                # Replaces
+                # browser User
+                # Agent from
+                # "HeadlessChrome".
+                self.disable_image_load,
+                self.page_delay,
+                self.logger)
+        except Exception as e:
+            exception = e
+            failed = True
+
+        if len(err_msg) > 0:
+            failed = True
 
         # see if session creation failed
-        failed = False
-        if len(err_msg) > 0:
+        if failed:
             InstaPy.env.event("SELENIUM", "ERROR-DURING-CREATING-SESSION", {"error": err_msg})
-            failed = True
         else:
             InstaPy.env.event("SELENIUM", "SESSION-CREATED")
 
         # do further testing if at this point not failed
-        exception = None
         if not failed:
             try:
                 InstaPy.env.event("SELENIUM", "TESTING-CONNECTION")

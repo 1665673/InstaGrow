@@ -12,6 +12,7 @@ from dotenv import load_dotenv, find_dotenv
 # reporter, arguments and patches
 from . import reporter
 from . import patch
+from . import patch2
 
 #
 #
@@ -38,6 +39,7 @@ DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 # }
 
 # set a global reporter
+_login_success = False
 _args = {}
 _arguments = {}
 _reporter = reporter.Reporter()
@@ -59,6 +61,7 @@ def args():
 def config(**kw):
     # apply login patches for instapy
     patch.apply()
+    patch2.apply()
 
     # call initiate function
     init_environment()
@@ -116,6 +119,7 @@ def init_environment():
     global _reporter_fields
     process_arguments()
     _reporter_fields.update({
+        "status": "active",
         "instance": _args.instance,
         "instagramUser": _args.username,
         # "proxy": _args.proxy,
@@ -274,6 +278,8 @@ def retrieve(attributes):
 
 
 def report_success(session):
+    global _login_success
+    _login_success = True
     proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
     update({
         "systemUser": getpass.getuser(),
@@ -281,7 +287,6 @@ def report_success(session):
         "instagramPassword": session.password,
         "loginResult": "success"
     })
-
 
 
 QUERY_TIMEOUT = 600
@@ -332,11 +337,13 @@ def test_connection(browser):
 
 
 proxy_add_client_url = SERVER + "/admin/proxy/{string}/clients"
+proxy_delete_client_url = SERVER + "/admin/proxy/{string}/clients/{client_id}"
 proxy_add_blacklist_url = SERVER + "/admin/proxy/{string}/fails"
 
 
 def event_handler(type, name, data):
     headers = {'content-type': 'application/json'}
+
     if type == "SELENIUM" and name == "CONNECTION-VERIFIED":
         if data["proxy"]:
             url = proxy_add_client_url.replace("{string}", data["proxy"])
@@ -344,7 +351,10 @@ def event_handler(type, name, data):
                 "id": _reporter.id,
                 "time": int(time.time())
             }
-            requests.post(url=url, data=_json.dumps(data), headers=headers)
+            try:
+                requests.post(url=url, data=_json.dumps(data), headers=headers)
+            except Exception:
+                pass
     elif type == "SELENIUM" and name == "CONNECTION-INVALID":
         if data["proxy"]:
             url = proxy_add_blacklist_url.replace("{string}", data["proxy"])
@@ -352,7 +362,17 @@ def event_handler(type, name, data):
                 "id": _reporter.id,
                 "time": int(time.time())
             }
-            requests.post(url=url, data=_json.dumps(data), headers=headers)
+            try:
+                requests.post(url=url, data=_json.dumps(data), headers=headers)
+            except Exception:
+                pass
+    elif type == "SESSION" and name == "SCRIPT-QUITTING":
+        if data["proxy"]:
+            url = proxy_delete_client_url.replace("{string}", data["proxy"]).replace("{client_id}", _reporter.id)
+            try:
+                requests.delete(url=url)
+            except Exception:
+                pass
     else:
         pass
 
@@ -393,7 +413,6 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
         return followers
 
 
-#
 #
 #
 #
