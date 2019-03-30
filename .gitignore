@@ -1,8 +1,0 @@
-.idea
-.DS_Store
-.env
-geckodriver.log
-__pycache__
-lib/.DS_Store
-lib/__pycache__
-firefox/.DS_Store
