@@ -205,6 +205,7 @@ def set_selenium_local_session_patch(self):
         # create a session with all required arguments
         failed = False
         exception = None
+        err_msg=''
         try:
             self.browser, err_msg = set_selenium_local_session(
                 *InstaPy.env.parse_proxy_positional(proxy_string),

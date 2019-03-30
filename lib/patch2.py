@@ -5,7 +5,200 @@ from . import environments as env
 
 def apply():
     sys.modules['instapy'].InstaPy.like_by_locations.__code__ = like_by_locations_patch.__code__
+    sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
+    sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
 
+def follow_user_patch(browser, track, login, user_name, button, blacklist, logger,
+                logfolder):
+    """ Follow a user either from the profile page or post page or dialog
+    box """
+    # list of available tracks to follow in: ["profile", "post" "dialog"]
+
+    # check action availability
+    if quota_supervisor("follows") == "jump":
+        return False, "jumped"
+
+    if track in ["profile", "post"]:
+        if track == "profile":
+            # check URL of the webpage, if it already is user's profile
+            # page, then do not navigate to it again
+            user_link = "https://www.instagram.com/{}/".format(user_name)
+            web_address_navigator(browser, user_link)
+
+        # find out CURRENT following status
+        following_status, follow_button = get_following_status(browser,
+                                                               track,
+                                                               login,
+                                                               user_name,
+                                                               None,
+                                                               logger,
+                                                               logfolder)
+        if following_status in ["Follow", "Follow Back"]:
+            click_visibly(browser, follow_button)  # click to follow
+            follow_state, msg = verify_action(browser, "follow", track, login,
+                                              user_name, None, logger,
+                                              logfolder)
+            if follow_state is not True:
+                logger.warning("!!!!!Retrying!!!!!!!")
+                return follow_user_patch(browser, track, login, user_name, button, blacklist, logger,logfolder)
+
+        elif following_status in ["Following", "Requested"]:
+            if following_status == "Following":
+                logger.info("--> Already following '{}'!\n".format(user_name))
+
+            elif following_status == "Requested":
+                logger.info("--> Already requested '{}' to follow!\n".format(
+                    user_name))
+
+            sleep(1)
+            return False, "already followed"
+
+        elif following_status in ["Unblock", "UNAVAILABLE"]:
+            if following_status == "Unblock":
+                failure_msg = "user is in block"
+
+            elif following_status == "UNAVAILABLE":
+                failure_msg = "user is inaccessible"
+
+            logger.warning(
+                "--> Couldn't follow '{}'!\t~{}".format(user_name,
+                                                        failure_msg))
+            return False, following_status
+
+        elif following_status is None:
+            sirens_wailing, emergency_state = emergency_exit(browser, login,
+                                                             logger)
+            if sirens_wailing is True:
+                return False, emergency_state
+
+            else:
+                logger.warning(
+                    "--> Couldn't unfollow '{}'!\t~unexpected failure".format(
+                        user_name))
+                return False, "unexpected failure"
+    elif track == "dialog":
+        click_element(browser, button)
+        sleep(3)
+
+    # general tasks after a successful follow
+    logger.info("--> Followed '{}'!".format(user_name.encode("utf-8")))
+    update_activity('follows')
+
+    # get user ID to record alongside username
+    user_id = get_user_id(browser, track, user_name, logger)
+
+    logtime = datetime.now().strftime('%Y-%m-%d %H:%M')
+    log_followed_pool(login, user_name, logger, logfolder, logtime, user_id)
+
+    follow_restriction("write", user_name, None, logger)
+
+    if blacklist['enabled'] is True:
+        action = 'followed'
+        add_user_to_blacklist(user_name,
+                              blacklist['campaign'],
+                              action,
+                              logger,
+                              logfolder)
+
+    # get the post-follow delay time to sleep
+    naply = get_action_delay("follow")
+    sleep(naply)
+
+    return True, "success"
+    
+    
+    
+def unfollow_user_patch(browser, track, username, person, person_id, button,
+                  relationship_data, logger, logfolder):
+    """ Unfollow a user either from the profile or post page or dialog box """
+    # list of available tracks to unfollow in: ["profile", "post" "dialog"]
+
+    # check action availability
+    if quota_supervisor("unfollows") == "jump":
+        return False, "jumped"
+
+    if track in ["profile", "post"]:
+        """ Method of unfollowing from a user's profile page or post page """
+        if track == "profile":
+            user_link = "https://www.instagram.com/{}/".format(person)
+            web_address_navigator(browser, user_link)
+
+        # find out CURRENT follow status
+        following_status, follow_button = get_following_status(browser,
+                                                               track,
+                                                               username,
+                                                               person,
+                                                               person_id,
+                                                               logger,
+                                                               logfolder)
+
+        if following_status in ["Following", "Requested"]:
+            click_element(browser, follow_button)  # click to unfollow
+            sleep(4)  # TODO: use explicit wait here
+            confirm_unfollow(browser)
+            unfollow_state, msg = verify_action(browser, "unfollow", track,
+                                                username,
+                                                person, person_id, logger,
+                                                logfolder)
+            if unfollow_state is not True:
+                logger.warning("!!!!!!!!!!!!!!!!!!!!retrying!")
+                return unfollow_user_patch(browser, track, username, person, person_id, button,
+                  relationship_data, logger, logfolder)
+
+        elif following_status in ["Follow", "Follow Back"]:
+            logger.info(
+                "--> Already unfollowed '{}'! or a private user that "
+                "rejected your req".format(
+                    person))
+            post_unfollow_cleanup(["successful", "uncertain"], username,
+                                  person, relationship_data, person_id, logger,
+                                  logfolder)
+            return False, "already unfollowed"
+
+        elif following_status in ["Unblock", "UNAVAILABLE"]:
+            if following_status == "Unblock":
+                failure_msg = "user is in block"
+
+            elif following_status == "UNAVAILABLE":
+                failure_msg = "user is inaccessible"
+
+            logger.warning(
+                "--> Couldn't unfollow '{}'!\t~{}".format(person, failure_msg))
+            post_unfollow_cleanup("uncertain", username, person,
+                                  relationship_data, person_id, logger,
+                                  logfolder)
+            return False, following_status
+
+        elif following_status is None:
+            sirens_wailing, emergency_state = emergency_exit(browser, username,
+                                                             logger)
+            if sirens_wailing is True:
+                return False, emergency_state
+
+            else:
+                logger.warning(
+                    "--> Couldn't unfollow '{}'!\t~unexpected failure".format(
+                        person))
+                return False, "unexpected failure"
+    elif track == "dialog":
+        """  Method of unfollowing from a dialog box """
+        click_element(browser, button)
+        sleep(4)  # TODO: use explicit wait here
+        confirm_unfollow(browser)
+
+    # general tasks after a successful unfollow
+    logger.info("--> Unfollowed '{}'!".format(person))
+    update_activity('unfollows')
+    post_unfollow_cleanup("successful", username, person, relationship_data,
+                          person_id, logger, logfolder)
+
+    # get the post-unfollow delay time to sleep
+    naply = get_action_delay("unfollow")
+    sleep(naply)
+
+    return True, "success"
+    
+    
 
 def like_by_locations_patch(self,
                       locations=None,
