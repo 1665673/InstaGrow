@@ -299,7 +299,7 @@ def like_by_locations_patch(self,
         try:
             links2 = get_links_for_location(self.browser,
                                            location,
-                                           10,
+                                           100,
                                            self.logger,
                                            media,
                                            skip_top_posts)
