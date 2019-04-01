@@ -281,12 +281,18 @@ def report_success(session):
     global _login_success
     _login_success = True
     proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
-    update({
+
+    update_attributes = {
         "systemUser": getpass.getuser(),
         "proxy": proxy_string,
         "instagramPassword": session.password,
-        "loginResult": "success"
-    })
+    }
+    if session.password:
+        update_attributes["loginResult"] = "success"
+    else:
+        update_attributes["loginResult"] = "success-with-cookie"
+
+    update(update_attributes)
 
 
 QUERY_TIMEOUT = 600

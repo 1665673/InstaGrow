@@ -211,7 +211,7 @@ def unfollow_user_patch(browser, track, username, person, person_id, button,
                                                 logfolder)
             if unfollow_state is not True:
                 logger.warning("!!!!!!!!!!!!!!!!!!!!retrying!")
-                return unfollow_user_patch(browser, track, username, person, person_id, button,
+                return self.unfollow_user_patch(browser, track, username, person, person_id, button,
                   relationship_data, logger, logfolder)
 
         elif following_status in ["Follow", "Follow Back"]:
@@ -299,7 +299,7 @@ def like_by_locations_patch(self,
         try:
             links2 = get_links_for_location(self.browser,
                                            location,
-                                           10,
+                                           50,
                                            self.logger,
                                            media,
                                            skip_top_posts)

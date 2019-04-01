@@ -18,6 +18,7 @@ if "instapy" in sys.modules:
 #   input & output
 #
 username = None
+version = None
 data = {}
 
 
@@ -26,25 +27,27 @@ data = {}
 #
 
 
-def get_data():
-    global username
-    global data
-    if username:
+def get_data(user, ver=None):
+    if user:  # and ver: version is optional
         headers = {'content-type': 'application/json'}
         req = {
-            "username": username
+            "username": user,
+            "version": ver
         }
-        data = requests.post(url=pull_url, data=json.dumps(req), headers=headers).json()
+        res = requests.post(url=pull_url, data=json.dumps(req), headers=headers).json()
+        return res
+    return {}
 
 
 if not is_module:
     parser = argparse.ArgumentParser()
     parser.add_argument("username", type=str)
+    parser.add_argument("version", nargs='?', type=str)
     args = parser.parse_args()
     username = args.username
+    version = args.version
 
-    get_data()
-
+    data = get_data(username, version)
     if "instagramUser" in data:
         print("%s %s %s" % (data["instagramUser"], data["instagramPassword"],
                             data["proxy"] if "proxy" in data else ""))
@@ -54,11 +57,14 @@ if not is_module:
 
 def userdata():
     global username
+    global version
     global data
 
     if "lib.environments" in sys.modules:
         username = sys.modules["lib.environments"]._args.username
-        get_data()
+        if "version" in sys.modules["lib.environments"]._reporter_fields:
+            version = sys.modules["lib.environments"]._reporter_fields["version"]
+        data = get_data(username, version)
         if "instagramUser" in data:
             print("[PULL] user credentials pulled from server")
             sys.modules["lib.environments"]._args.username = data["instagramUser"]

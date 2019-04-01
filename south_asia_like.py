@@ -3,18 +3,17 @@ from instapy.util import smart_run
 import time
 import lib.environments as env
 
-env.config(version="like-ff-2.1")
+env.config(version="south-asia-ff-1.0")
 
 SLEEP_BETWEEN_EACH_LIKE = 60
 TRACK_FOLLOWER_COUNT_GAP = 3600
 
-
-tags = ['love', 'instagood', 'photooftheday', 'fashion']
+tags = ['215567918/kathmandu-nepal/', '278360789/nepal/', '498870164/new-delhi/','302416621/taiwan/']
 
 session = InstaPy(
-    headless_browser=False,
+    headless_browser=True,
     bypass_suspicious_attempt=True,
-    use_firefox=False,
+    use_firefox=True,
     **env.arguments()
 )
 
@@ -24,7 +23,7 @@ with smart_run(session):
         for tag in tags:
             try:
                 time.sleep(SLEEP_BETWEEN_EACH_LIKE)
-                session.like_by_tags([tag], amount=1, interact=False)
+                session.like_by_locations([tag], amount=1)
             except Exception as e:
                 env.error("like_by_tags", "exception", str(e))
 
