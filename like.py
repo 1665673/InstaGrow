@@ -14,7 +14,7 @@ tags = ['love', 'instagood', 'photooftheday', 'fashion']
 session = InstaPy(
     headless_browser=False,
     bypass_suspicious_attempt=True,
-    use_firefox=True,
+    use_firefox=False,
     **env.arguments()
 )
 
