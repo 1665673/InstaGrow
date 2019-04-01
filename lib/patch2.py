@@ -211,7 +211,7 @@ def unfollow_user_patch(browser, track, username, person, person_id, button,
                                                 logfolder)
             if unfollow_state is not True:
                 logger.warning("!!!!!!!!!!!!!!!!!!!!retrying!")
-                return unfollow_user_patch(browser, track, username, person, person_id, button,
+                return self.unfollow_user_patch(browser, track, username, person, person_id, button,
                   relationship_data, logger, logfolder)
 
         elif following_status in ["Follow", "Follow Back"]:
