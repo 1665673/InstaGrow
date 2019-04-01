@@ -18,8 +18,10 @@ from . import patch2
 #
 #
 #
-#   easy to use interfaces for InstaGrow
-#
+#   this file:
+#   (1) patches original InstaPy
+#   (2) parses arguments, set-up reporter and other environments
+#   (3) provides easy to use interfaces for InstaGrow
 #
 #
 #
@@ -38,16 +40,20 @@ DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 #     "proxy": "N/A"
 # }
 
-# set a global reporter
+# declaim a global reporter
 _login_success = False
 _args = {}
 _arguments = {}
-_reporter = reporter.Reporter()
+_reporter = None
 _reporter_fields = {}
-# set a global logger
+# declaim a global logger
 logger = logging.getLogger()
 
 
+#
+#   below is a group of functions as
+#   interfaces for accessing global variables in the environments
+#
 def arguments():
     global _arguments
     return _arguments
@@ -56,19 +62,6 @@ def arguments():
 def args():
     global _args
     return _args
-
-
-def config(**kw):
-    # apply login patches for instapy
-    patch.apply()
-    patch2.apply()
-
-    # call initiate function
-    init_environment()
-
-    global _reporter_fields
-    _reporter_fields.update(kw)
-    checkin()
 
 
 def set_version(version):
@@ -108,16 +101,56 @@ def get_stdout():
 #
 #
 #
+#
+#   this function wraps all the dirty works
+#   it sets-up the whole environment
+#
+#
+#
+#
+def config(**kw):
+    global _reporter_fields
+
+    # call initiate function
+    init_environment(**kw)
+
+    # checkin reporter
+    checkin()
+
+    # apply patches to instapy
+    patch.apply()
+    patch2.apply()
+
+
+#
+#
+#
 #   initialize the big environment
 #   (1) parse and process arguments
 #   (2) config StreamHub and Reporter
 #
 #
-def init_environment():
+def init_environment(**kw):
     # process arguments and config related environment
     global _args
     global _reporter_fields
-    process_arguments()
+    global _reporter
+
+    # process arguments
+    process_arguments(**kw)
+
+    # redirect streams to StreamHub
+    stream = reporter.StreamHub()
+    sys.stderr = stream
+    # sys.stdout = stream
+
+    # setup reporter for StreamHub
+    _reporter = reporter.Reporter()
+    stream.set_reporter(_reporter)
+    stream.begin_report(True)
+    stream.begin_print(True)
+
+    # config reporter fields
     _reporter_fields.update({
         "status": "active",
         "instance": _args.instance,
@@ -125,22 +158,11 @@ def init_environment():
         # "proxy": _args.proxy,
         # "systemUser": getpass.getuser()
     })
+    _reporter_fields.update(kw)
     remove_none(_reporter_fields)
 
-    # redirect streams
-    stream = reporter.StreamHub()
-    sys.stderr = stream
-    # sys.stdout = stream
 
-    # setup reporter
-    global _reporter
-    # reporter = reporter.Reporter()
-    stream.set_reporter(_reporter)
-    stream.begin_report(True)
-    stream.begin_print(True)
-
-
-def process_arguments():
+def process_arguments(**kw):
     global _args
     parser = argparse.ArgumentParser()
     parser.add_argument("username", nargs='?', type=str)
@@ -148,18 +170,26 @@ def process_arguments():
     parser.add_argument("proxy", nargs='?', type=str)
     parser.add_argument("-i", "--instance", type=str)
     parser.add_argument("-p", "--pull", action="store_true")
+    parser.add_argument("-pv", "--pull-by-version", action="store_true")
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", action="store_true")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
     _args = parser.parse_args()
 
-    if _args.pull:
+    # see if we need to pull user credentials from server
+    # pulled data will be merged into command line arguments
+    if _args.pull or _args.pull_by_version:
         from . import pull
-        pull.userdata()
+        if _args.pull:
+            pull.userdata(_args.username, None)
+        else:
+            if "version" in kw:
+                pull.userdata(_args.username, kw["version"])
 
     if not _args.username:
         _args.username = "unknown-user-tba"
 
+    # setup arguments for __init__ InstaPy
     global _arguments
     _arguments = {
         "username": _args.username,
@@ -170,13 +200,6 @@ def process_arguments():
     remove_none(_arguments)
     # print(_args)
     # print(_arguments)
-    #
-    #
-    #
-    #   standard interface for reporter
-    #
-    #
-    #
 
 
 def remove_none(arguments):
@@ -205,6 +228,16 @@ def parse_proxy_positional(proxy_string):
     return [proxy_address, proxy_port, proxy_username, proxy_password]
 
 
+#
+#
+#
+#   wrapped interfaces for logging
+#   basically two types:
+#   (1) logging string buffers which going into "messages" account by default
+#   (2) logging json objects which going into "json" account by default
+#
+#
+#
 """""""""""""""""""""""""""""""""""""""
 def log(msg, *var, **kw):
     title = ""
@@ -222,14 +255,14 @@ def info(*var, **kw):
 def log(buffer, title="LOG", entry="messages"):
     buffer = "%s[%d] %s" % ((title + " " if title else ""), int(time.time()), buffer)
     reporter.StreamHub.stdout.write(buffer + "\n")
-    global _reporter
-    _reporter.send(buffer, entry)
+    if _reporter:
+        _reporter.send(buffer, entry)
 
 
 def json(obj, entry="json"):
     reporter.StreamHub.stdout.write(entry + ": " + _json.dumps(obj) + "\n")
-    global _reporter
-    _reporter.push([obj], entry)
+    if _reporter:
+        _reporter.json(obj, entry)
 
 
 def data(name, value):
@@ -248,8 +281,8 @@ def event(type, name, data={}):
         "name": name,
         "data": data
     }
-    global _reporter
-    _reporter.push([obj], "events")
+    if _reporter:
+        _reporter.json(obj, "events")
     #
     #   call event_handler
     #   mainly dealing with the cases where an event is associated with other database queries
@@ -265,40 +298,31 @@ def error(type, name, data={}):
         "name": name,
         "data": data
     }
-    global _reporter
-    _reporter.push([obj], "errors")
+    if _reporter:
+        _reporter.json(obj, "errors")
 
 
 def update(attributes):
-    _reporter.update(attributes)
+    if _reporter:
+        _reporter.update(attributes)
 
 
 def retrieve(attributes):
+    if not _reporter:
+        return None
     return _reporter.retrieve(attributes)
 
 
-def report_success(session):
-    global _login_success
-    _login_success = True
-    proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
-
-    update_attributes = {
-        "systemUser": getpass.getuser(),
-        "proxy": proxy_string,
-        "instagramPassword": session.password,
-    }
-    if session.password:
-        update_attributes["loginResult"] = "success"
-    else:
-        update_attributes["loginResult"] = "success-with-cookie"
-
-    update(update_attributes)
+def retrieve_latest(attributes):
+    return query_latest_attributes(attributes)
 
 
 QUERY_TIMEOUT = 600
 
 
 def query_latest_attributes(attributes):
+    if not _reporter:
+        return None
     begin_time = int(time.time())
     if not _reporter:
         raise Exception("reporter not ready")
@@ -321,27 +345,31 @@ def query_latest_attributes(attributes):
         time.sleep(1)
 
 
-ip_address_check_url = "https://api.ipify.org/"
-instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
+def report_success(session):
+    global _login_success
+    _login_success = True
+    proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
+
+    update_attributes = {
+        "systemUser": getpass.getuser(),
+        "proxy": proxy_string,
+        "instagramPassword": session.password,
+    }
+    if session.password:
+        update_attributes["loginResult"] = "success"
+    else:
+        update_attributes["loginResult"] = "success-with-cookie"
+
+    update(update_attributes)
 
 
-def test_connection(browser):
-    try:
-        fetch_ip = None
-        fetch_instagram_data = None
-        web_address_navigator(browser, ip_address_check_url)
-        fetch_ip = browser.find_element_by_tag_name("pre").text
-        if fetch_ip:
-            web_address_navigator(browser, instagram_test_url)
-            fetch_instagram_data = browser.page_source
-        return {
-            "ip": fetch_ip,
-            "instagramResponse": fetch_instagram_data
-        }
-    except Exception as e:
-        raise e
-
-
+#
+#
+#
+#   local event handlers for all logging entries going into 'EVENT'
+#
+#
+#
 proxy_add_client_url = SERVER + "/admin/proxy/{string}/clients"
 proxy_delete_client_url = SERVER + "/admin/proxy/{string}/clients/{client_id}"
 proxy_add_blacklist_url = SERVER + "/admin/proxy/{string}/fails"
@@ -381,6 +409,34 @@ def event_handler(type, name, data):
                 pass
     else:
         pass
+
+
+#
+#
+#
+#   other miscellaneous functions
+#
+#
+#
+ip_address_check_url = "https://api.ipify.org/"
+instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
+
+
+def test_connection(browser):
+    try:
+        fetch_ip = None
+        fetch_instagram_data = None
+        web_address_navigator(browser, ip_address_check_url)
+        fetch_ip = browser.find_element_by_tag_name("pre").text
+        if fetch_ip:
+            web_address_navigator(browser, instagram_test_url)
+            fetch_instagram_data = browser.page_source
+        return {
+            "ip": fetch_ip,
+            "instagramResponse": fetch_instagram_data
+        }
+    except Exception as e:
+        raise e
 
 
 def get_follower_num(session):

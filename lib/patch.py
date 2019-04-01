@@ -31,6 +31,7 @@ def apply():
     sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
     sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
+    sys.modules['instapy.util'].parse_cli_args.__code__ = parse_cli_args.__code__
 
 
 #
@@ -205,7 +206,7 @@ def set_selenium_local_session_patch(self):
         # create a session with all required arguments
         failed = False
         exception = None
-        err_msg=''
+        err_msg = ''
         try:
             self.browser, err_msg = set_selenium_local_session(
                 *InstaPy.env.parse_proxy_positional(proxy_string),
@@ -1160,3 +1161,85 @@ def update_activity(action="server_calls"):
 
         # commit the latest changes
         conn.commit()
+
+
+def parse_cli_args():
+    super_print("original InstaPy argument parsing disabled")
+    args = type('EmptyArgumentsObject', (object,), {})
+    args.username = None
+    args.password = None
+    args.use_firefox = None
+    args.page_delay = None
+    args.proxy_address = None
+    args.proxy_port = None
+    args.headless_browser = None
+    args.disable_image_load = None
+    args.bypass_suspicious_attempt = None
+    args.bypass_with_mobile = None
+    return args
+    """ Parse arguments passed by command line interface """
+
+    # AP_kwargs = dict(prog="InstaPy",
+    #                  description="Parse InstaPy constructor's arguments",
+    #                  epilog="And that's how you'd pass arguments by CLI..",
+    #                  conflict_handler="resolve")
+    # if python_version() < "3.5":
+    #     parser = CustomizedArgumentParser(**AP_kwargs)
+    # else:
+    #     AP_kwargs.update(allow_abbrev=False)
+    #     parser = ArgumentParser(**AP_kwargs)
+    #
+    # """ Flags that REQUIRE a value once added
+    # ```python quickstart.py --username abc```
+    # """
+    # parser.add_argument(
+    #     "-u", "--username", help="Username", type=str, metavar="abc")
+    # parser.add_argument(
+    #     "-p", "--password", help="Password", type=str, metavar="123")
+    # parser.add_argument(
+    #     "-pd", "--page-delay", help="Implicit wait", type=int, metavar=25)
+    # parser.add_argument(
+    #     "-pa", "--proxy-address", help="Proxy address",
+    #     type=str, metavar="192.168.1.1")
+    # parser.add_argument(
+    #     "-pp", "--proxy-port", help="Proxy port", type=int, metavar=8080)
+    #
+    # """ Auto-booleans: adding these flags ENABLE themselves automatically
+    # ```python quickstart.py --use-firefox```
+    # """
+    # parser.add_argument(
+    #     "-uf", "--use-firefox", help="Use Firefox",
+    #     action="store_true", default=None)
+    # parser.add_argument(
+    #     "-hb", "--headless-browser", help="Headless browser",
+    #     action="store_true", default=None)
+    # parser.add_argument(
+    #     "-dil", "--disable-image-load", help="Disable image load",
+    #     action="store_true", default=None)
+    # parser.add_argument(
+    #     "-bsa", "--bypass-suspicious-attempt",
+    #     help="Bypass suspicious attempt", action="store_true", default=None)
+    # parser.add_argument(
+    #     "-bwm", "--bypass-with-mobile", help="Bypass with mobile phone",
+    #     action="store_true", default=None)
+    #
+    # """ Style below can convert strings into booleans:
+    # ```parser.add_argument("--is-debug",
+    #                        default=False,
+    #                        type=lambda x: (str(x).capitalize() == "True"))```
+    #
+    # So that, you can pass bool values explicitly from CLI,
+    # ```python quickstart.py --is-debug True```
+    #
+    # NOTE: This style is the easiest of it and currently not being used.
+    # """
+    #
+    # args, args_unknown = parser.parse_known_args()
+    # """ Once added custom arguments if you use a reserved name of core flags
+    # and don't parse it, e.g.,
+    # `-ufa` will misbehave cos it has `-uf` reserved flag in it.
+    #
+    # But if you parse it, it's okay.
+    # """
+    #
+    # return args

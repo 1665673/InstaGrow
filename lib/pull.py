@@ -3,6 +3,7 @@ import argparse
 import json
 import sys
 import os
+import time
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -27,12 +28,12 @@ data = {}
 #
 
 
-def get_data(user, ver=None):
-    if user:  # and ver: version is optional
+def get_data(_username, _version=None):
+    if _username:  # and _version: version is optional
         headers = {'content-type': 'application/json'}
         req = {
-            "username": user,
-            "version": ver
+            "username": _username,
+            "version": _version
         }
         res = requests.post(url=pull_url, data=json.dumps(req), headers=headers).json()
         return res
@@ -55,20 +56,23 @@ if not is_module:
         print("no credentials available from server")
 
 
-def userdata():
+def userdata(_username, _version):
     global username
     global version
     global data
+    username = _username
+    version = _version
 
     if "lib.environments" in sys.modules:
-        username = sys.modules["lib.environments"]._args.username
-        if "version" in sys.modules["lib.environments"]._reporter_fields:
-            version = sys.modules["lib.environments"]._reporter_fields["version"]
+        # username = sys.modules["lib.environments"]._args.username
+        # if "version" in sys.modules["lib.environments"]._reporter_fields:
+        #    version = sys.modules["lib.environments"]._reporter_fields["version"]
         data = get_data(username, version)
+        version_str = version if version else "all-versions"
         if "instagramUser" in data:
-            print("[PULL] user credentials pulled from server")
+            print("PULL  [%d] user credentials @ version [%s] pulled from server" % (int(time.time()), version_str))
             sys.modules["lib.environments"]._args.username = data["instagramUser"]
             sys.modules["lib.environments"]._args.password = data["instagramPassword"]
             sys.modules["lib.environments"]._args.proxy = (data["proxy"] if "proxy" in data else None)
         else:
-            print("[PULL] no credentials available from server")
+            print("PULL  [%d] no credentials @ version [%s] available from server" % (int(time.time()), version_str))

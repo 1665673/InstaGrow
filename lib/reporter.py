@@ -56,14 +56,14 @@ class Reporter:
         self.attributes = {}
         self.checkin_url = None
         self.access_url = None
-        self.payload = {"entries": {}}
+        self.payload = {"accounts": {}}
         self.headers = {'content-type': 'application/json'}
 
-    def __merge(self, array, entry):
-        if entry not in self.payload["entries"]:
-            self.payload["entries"][entry] = array
+    def __merge(self, array, account):
+        if account not in self.payload["accounts"]:
+            self.payload["accounts"][account] = array
         else:
-            self.payload["entries"][entry] += array
+            self.payload["accounts"][account] += array
         self.payload["time"] = int(time.time())
 
     def __post(self):
@@ -76,7 +76,7 @@ class Reporter:
         except Exception as e:
             pass
         finally:
-            self.payload = {"entries": {}}
+            self.payload = {"accounts": {}}
 
     def checkin(self, url, attributes):
         self.attributes = attributes
@@ -108,15 +108,15 @@ class Reporter:
             pass
         return {}
 
-    def send(self, buffer, entry="messages"):
+    def send(self, buffer, account="messages"):
         buffer = buffer.rstrip()
         if buffer == "":
             return
-        self.push([buffer], entry)
+        self.push([buffer], account)
 
-    def json(self, json, entry="json"):
-        self.push([json], entry)
+    def json(self, json, account="json"):
+        self.push([json], account)
 
-    def push(self, array, entry):
-        self.__merge(array, entry)
+    def push(self, array, account):
+        self.__merge(array, account)
         self.__post()
