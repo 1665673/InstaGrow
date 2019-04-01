@@ -7,7 +7,7 @@ import time
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
-SERVER = os.getenv("SERVER")
+SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 
 #
 #   fucntion for apply a proxy

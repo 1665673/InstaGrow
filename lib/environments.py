@@ -26,7 +26,7 @@ from . import patch2
 #
 
 load_dotenv(find_dotenv())
-SERVER = os.getenv("SERVER")
+SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 CHECKIN_URL = SERVER + "/admin/check-in"
 DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 # MACROS
