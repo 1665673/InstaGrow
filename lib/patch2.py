@@ -109,7 +109,7 @@ def follow_user_patch(browser, track, login, user_name, button, blacklist, logge
                                               logfolder)
             if follow_state is not True:
                 logger.warning("!!!!!Retrying!!!!!!!")
-                return follow_user_patch(browser, track, login, user_name, button, blacklist, logger,logfolder)
+                return self.follow_user_patch(browser, track, login, user_name, button, blacklist, logger,logfolder)
 
         elif following_status in ["Following", "Requested"]:
             if following_status == "Following":
