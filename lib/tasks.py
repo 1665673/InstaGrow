@@ -55,6 +55,12 @@ class Maneuver:
         try:
             count_maneuver = len(self._action()["list"])
             self.index_maneuver += 1
+            # when calculating next performing time,
+            # make sure current self.ready is at least @ current time time.time()
+            #   so a branch of maneuvers won't be far behind
+            #
+            if self.ready < time.time():
+                self.ready = time.time()
             if self.index_maneuver < count_maneuver:
                 self.ready += self._action()["cool-down"]
             else:  # self.index_maneuver == count_maneuver:
