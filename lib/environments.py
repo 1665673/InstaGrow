@@ -182,6 +182,8 @@ def process_arguments(**kw):
     parser.add_argument("password", nargs='?', type=str)
     parser.add_argument("proxy", nargs='?', type=str)
     parser.add_argument("-i", "--instance", type=str)
+    parser.add_argument("-v", "--version", type=str)
+    parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--tasks", nargs="+", type=str)
     parser.add_argument("-p", "--pull", nargs="*", type=str)
     parser.add_argument("-q", "--query", action="store_true")
@@ -191,7 +193,8 @@ def process_arguments(**kw):
 
     # merge named parameters **kw into command line arguments
     for key in kw:
-        setattr(_args, key, kw[key])
+        if not hasattr(_args, key) or getattr(_args, key) is None:
+            setattr(_args, key, kw[key])
 
     # see if we need to pull user credentials from server
     # pulled data will be merged into command line arguments
@@ -265,7 +268,7 @@ def info(*var, **kw):
 """""""""""""""""""""""""""""""""""""""
 
 
-def log(buffer, title="LOG", account="messages"):
+def log(buffer, title="LOG  ", account="messages"):
     buffer = "%s[%d] %s" % ((title + " " if title else ""), int(time.time()), buffer)
     reporter.StreamHub.stdout.write(buffer + "\n")
     if _reporter:

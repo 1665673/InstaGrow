@@ -1164,7 +1164,7 @@ def update_activity(action="server_calls"):
 
 
 def parse_cli_args():
-    super_print("original InstaPy argument parsing disabled")
+    super_print("[InstaPy] original InstaPy argument parsing disabled")
     args = type('EmptyArgumentsObject', (object,), {})
     args.username = None
     args.password = None

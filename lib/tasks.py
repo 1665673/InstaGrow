@@ -56,7 +56,7 @@ class Maneuver:
             count_maneuver = len(self._action()["list"])
             self.index_maneuver += 1
             if self.index_maneuver < count_maneuver:
-                self.ready += self._action()["delay-in-between"]
+                self.ready += self._action()["cool-down"]
             else:  # self.index_maneuver == count_maneuver:
                 self.ready += self._action()["delay-upon-completion"]
                 if not self.is_end():
