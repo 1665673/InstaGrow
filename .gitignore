@@ -6,3 +6,5 @@ __pycache__
 lib/.DS_Store
 lib/__pycache__
 firefox/.DS_Store
+tasks/.DS_Store
+tasks/__pycache__
