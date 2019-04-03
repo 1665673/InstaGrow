@@ -131,6 +131,11 @@ def config(**kw):
     patch.apply()
     patch2.apply()
 
+    # print information
+    get_stdout().write("version: " + _args.version + "\n")
+    get_stdout().write("browser: " + ("chrome" if _args.chrome else "firefox") + "\n")
+    get_stdout().write("GUI Mode: " + ("gui" if _args.gui else "headless") + "\n")
+
 
 #
 #
