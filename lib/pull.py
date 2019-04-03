@@ -19,8 +19,8 @@ if "instapy" in sys.modules:
 #   input & output
 #
 username = None
-version = None
-data = {}
+sources = None
+data = None
 
 
 #
@@ -28,27 +28,33 @@ data = {}
 #
 
 
-def get_data(_username, _version=None):
+def get_data(_username, _sources=[], _env={}):
     if _username:  # and _version: version is optional
         headers = {'content-type': 'application/json'}
         req = {
-            "username": _username,
-            "version": _version
+            "username": _username
         }
-        res = requests.post(url=pull_url, data=json.dumps(req), headers=headers).json()
-        return res
-    return {}
+        if _sources is not None and len(_sources) > 0 and type(_env) is dict:
+            for source in _sources:
+                if source in _env and _env[source] is not None:
+                    req.update({source: _env[source]})
+        try:
+            res = requests.post(url=pull_url, data=json.dumps(req), headers=headers).json()
+            return res
+        except Exception:
+            return {}
 
 
 if not is_module:
     parser = argparse.ArgumentParser()
     parser.add_argument("username", type=str)
-    parser.add_argument("version", nargs='?', type=str)
+    parser.add_argument("-v", "--version", nargs='?', type=str)
+    parser.add_argument("-t", "--tasks", nargs='?', type=str)
     args = parser.parse_args()
     username = args.username
-    version = args.version
+    sources = ["version", "tasks"]
 
-    data = get_data(username, version)
+    data = get_data(username, sources, args.__dict__)
     if "instagramUser" in data:
         print("%s %s %s" % (data["instagramUser"], data["instagramPassword"],
                             data["proxy"] if "proxy" in data else ""))
@@ -56,23 +62,26 @@ if not is_module:
         print("no credentials available from server")
 
 
-def userdata(_username, _version):
+def userdata(_username, _sources=[], _env={}):
     global username
-    global version
+    global sources
     global data
     username = _username
-    version = _version
+    sources = _sources
+
+    if not username:
+        return None
 
     if "lib.environments" in sys.modules:
         # username = sys.modules["lib.environments"]._args.username
         # if "version" in sys.modules["lib.environments"]._reporter_fields:
         #    version = sys.modules["lib.environments"]._reporter_fields["version"]
-        data = get_data(username, version)
-        version_str = version if version else "all-versions"
+        data = get_data(username, sources, _env)
+        source = str(_sources) if _sources is not None and len(_sources) > 0 else "latest-records"
         if "instagramUser" in data:
-            print("PULL  [%d] user credentials @ version [%s] pulled from server" % (int(time.time()), version_str))
+            print("PULL  [%d] user credentials @%s successfully pulled from server" % (int(time.time()), source))
             sys.modules["lib.environments"]._args.username = data["instagramUser"]
             sys.modules["lib.environments"]._args.password = data["instagramPassword"]
             sys.modules["lib.environments"]._args.proxy = (data["proxy"] if "proxy" in data else None)
         else:
-            print("PULL  [%d] no credentials @ version [%s] available from server" % (int(time.time()), version_str))
+            print("PULL  [%d] no credentials @%s available from server" % (int(time.time()), source))

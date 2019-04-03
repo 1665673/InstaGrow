@@ -46,6 +46,7 @@ _args = {}
 _arguments = {}
 _reporter = None
 _reporter_fields = {}
+_session = None
 # declaim a global logger
 logger = logging.getLogger()
 
@@ -96,6 +97,15 @@ def get_stderr():
 
 def get_stdout():
     return reporter.StreamHub.stdout
+
+
+def set_session(session):
+    global _session
+    _session = session
+
+
+def get_session():
+    return _session
 
 
 #
@@ -153,12 +163,15 @@ def init_environment(**kw):
     # config reporter fields
     _reporter_fields.update({
         "status": "active",
-        "instance": _args.instance,
+        # "instance": _args.instance,
         "instagramUser": _args.username,
+        "instagramPassword": _args.password,
         # "proxy": _args.proxy,
         # "systemUser": getpass.getuser()
     })
-    _reporter_fields.update(kw)
+
+    # also put all commandline arguments into report fields
+    _reporter_fields.update(_args.__dict__)
     remove_none(_reporter_fields)
 
 
@@ -169,22 +182,22 @@ def process_arguments(**kw):
     parser.add_argument("password", nargs='?', type=str)
     parser.add_argument("proxy", nargs='?', type=str)
     parser.add_argument("-i", "--instance", type=str)
-    parser.add_argument("-p", "--pull", action="store_true")
-    parser.add_argument("-pv", "--pull-by-version", action="store_true")
+    parser.add_argument("-t", "--tasks", nargs="+", type=str)
+    parser.add_argument("-p", "--pull", nargs="*", type=str)
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", action="store_true")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
     _args = parser.parse_args()
 
+    # merge named parameters **kw into command line arguments
+    for key in kw:
+        setattr(_args, key, kw[key])
+
     # see if we need to pull user credentials from server
     # pulled data will be merged into command line arguments
-    if _args.pull or _args.pull_by_version:
+    if _args.pull is not None:
         from . import pull
-        if _args.pull:
-            pull.userdata(_args.username, None)
-        else:
-            if "version" in kw:
-                pull.userdata(_args.username, kw["version"])
+        pull.userdata(_args.username, _args.pull, _args.__dict__)
 
     if not _args.username:
         _args.username = "unknown-user-tba"
@@ -252,17 +265,17 @@ def info(*var, **kw):
 """""""""""""""""""""""""""""""""""""""
 
 
-def log(buffer, title="LOG", entry="messages"):
+def log(buffer, title="LOG", account="messages"):
     buffer = "%s[%d] %s" % ((title + " " if title else ""), int(time.time()), buffer)
     reporter.StreamHub.stdout.write(buffer + "\n")
     if _reporter:
-        _reporter.send(buffer, entry)
+        _reporter.send(buffer, account)
 
 
-def json(obj, entry="json"):
-    reporter.StreamHub.stdout.write(entry + ": " + _json.dumps(obj) + "\n")
+def json(obj, account="json"):
+    reporter.StreamHub.stdout.write(account + ": " + _json.dumps(obj) + "\n")
     if _reporter:
-        _reporter.json(obj, entry)
+        _reporter.json(obj, account)
 
 
 def data(name, value):

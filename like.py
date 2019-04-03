@@ -8,7 +8,6 @@ env.config(version="like-ff-2.1")
 SLEEP_BETWEEN_EACH_LIKE = 60
 TRACK_FOLLOWER_COUNT_GAP = 3600
 
-
 tags = ['love', 'instagood', 'photooftheday', 'fashion']
 
 session = InstaPy(
