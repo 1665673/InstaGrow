@@ -2,35 +2,35 @@ import time
 import importlib
 import queue
 import copy
-from . import maneuver as libManeuver
+from . import maneuver as handlers
 
 """
-tasks term definition
+term definitions
 
-terms                       examples
+terms                           examples
 
-tasks:                      [ follow.py, like-asia.py, ...]
-    task                    follow.py
-        actions:            [ follow-by-list, un-follow-by-list, ...]
-            action:         follow-by-list
-                maneuver    [ justinbieber, taylorswift, selenagomez, ...]
+tasks:                          [ follow.py, like-asia.py, ...]
+    task                        follow.py
+        actions:                [ follow-by-list, un-follow-by-list, ...]
+            action:             follow-by-list
+                maneuvers:      [ justinbieber, taylorswift, selenagomez, ...]
+                    maneuver:   (follow, justinbiever)
 
 """
 
-"""
-load_tasks()
-returns a dict with all tasks loaded in
-tasks_dict = {
-    "task_name" : object-Task{
-        "name" : task_name,
-        "title": defined_in_module,
-        "loop": defined_in_module
-        "actions": defined_in_module
-    },
-    ...
-}
-"""
 TASKS_DIR = "tasks"
+
+"""
+class Task
+class Maneuver
+
+A Task object represents the logic of a task. 
+A task could be a mix of actions, an example of an action is a follow-by-list.
+
+A Maneuver object is an iterator to traverse all maneuvers defined in a task,
+this iterator will likely to go across different actions in the same Task object,
+while preserving it's relative ordering.
+"""
 
 
 class Maneuver:
@@ -99,7 +99,7 @@ class Maneuver:
             action_type = action["type"]
             target = action["list"][self.index_maneuver]
 
-            result = libManeuver.execute(action_type, target, self.ready)
+            result = handlers.execute(action_type, target, self.ready)
             return result
         except Exception as e:
             return None
@@ -122,6 +122,21 @@ class Task:
             return Maneuver(self, len(self.actions) - 1, len(self.actions[-1]["list"]))
         except Exception as e:
             return self.begin()
+
+
+"""
+function load()
+returns a dict with all tasks loaded in
+tasks_dict = {
+    "task_name" : object-Task{
+        "name" : task_name,
+        "title": defined_in_module,
+        "loop": defined_in_module
+        "actions": defined_in_module
+    },
+    ...
+}
+"""
 
 
 def read_task_from_module(task_name):
@@ -155,8 +170,9 @@ def load(task_names):
 """
 class ManeuverQueue:
 
-return a priority queue of pending manervers,
-it contains exactly one maneuver from each task
+It's a priority queue for pending maneuvers,
+it contains exactly one maneuver from each task.
+this class is based on queue.PriorityQueue.
 
 
 set_tasks():
@@ -164,7 +180,7 @@ init the queue by passing the tasks dict,
 it reads the first maneuver from each task
 
 add_task():
-add another task. it's first manerver will be pushed into queue
+add another task. it's first maneuver will be pushed into queue
 
 get():
 it overrides the default get() method in original queue.PriorityQueue,
