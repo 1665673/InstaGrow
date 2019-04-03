@@ -10,12 +10,7 @@ TRACK_FOLLOWER_COUNT_GAP = 3600
 
 tags = ['love', 'instagood', 'photooftheday', 'fashion']
 
-session = InstaPy(
-    headless_browser=False,
-    bypass_suspicious_attempt=True,
-    use_firefox=False,
-    **env.arguments()
-)
+session = InstaPy(**env.arguments())
 
 with smart_run(session):
     env.report_success(session)

@@ -181,6 +181,8 @@ def process_arguments(**kw):
     parser.add_argument("username", nargs='?', type=str)
     parser.add_argument("password", nargs='?', type=str)
     parser.add_argument("proxy", nargs='?', type=str)
+    parser.add_argument("-c", "--chrome", action="store_true")
+    parser.add_argument("-g", "--gui", action="store_true")
     parser.add_argument("-i", "--instance", type=str)
     parser.add_argument("-v", "--version", type=str)
     parser.add_argument("-n", "--name", type=str)
@@ -210,6 +212,9 @@ def process_arguments(**kw):
     _arguments = {
         "username": _args.username,
         "password": _args.password,
+        "bypass_suspicious_attempt": True,
+        "headless_browser": True if not _args.gui else False,
+        "use_firefox": True if not _args.chrome else False,
     }
     proxy = parse_proxy_keyword(_args.proxy)
     _arguments.update(proxy)

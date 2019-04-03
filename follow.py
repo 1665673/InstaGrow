@@ -14,12 +14,7 @@ users_celebrity = ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian'
                    'beyonce', 'kyliejennr', 'katyperry', 'therock']
 users = users_celebrity
 
-session = InstaPy(
-    bypass_suspicious_attempt=True,
-    headless_browser=True,
-    use_firefox=True,
-    **env.arguments()
-)
+session = InstaPy(**env.arguments())
 
 with smart_run(session):
     env.report_success(session)

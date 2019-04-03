@@ -39,7 +39,7 @@ def execute(action_type, target, ready):
         env.log("sleep %1.2fs till task (%s, %s) is ready" % (delay, action_type, target), title="TASK")
         time.sleep(delay)
     else:
-        env.log("now performing task (%s,%s)" % (action_type, target), title="TASK")
+        env.log("now performing task (%s, %s)" % (action_type, target), title="TASK")
 
     session = env.get_session()
     try:

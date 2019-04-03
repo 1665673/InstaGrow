@@ -156,6 +156,8 @@ def read_task_from_module(task_name):
 
 
 def load(task_names):
+    if not task_names:
+        return {}
     tasks = {}
     for task_name in task_names:
         try:
