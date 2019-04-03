@@ -56,8 +56,13 @@ if not is_module:
 
     data = get_data(username, sources, args.__dict__)
     if "instagramUser" in data:
-        print("%s %s %s" % (data["instagramUser"], data["instagramPassword"],
-                            data["proxy"] if "proxy" in data else ""))
+        tasks = ""
+        if "tasks" in data and data["tasks"] is not None:
+            tasks = "-t "
+            for t in data["tasks"]:
+                tasks += t + " "
+        print("%s %s %s %s" % (data["instagramUser"], data["instagramPassword"],
+                            data["proxy"] if "proxy" in data else "", tasks))
     else:
         print("no credentials available from server")
 
@@ -79,9 +84,13 @@ def userdata(_username, _sources=[], _env={}):
         data = get_data(username, sources, _env)
         source = str(_sources) if _sources is not None and len(_sources) > 0 else "latest-records"
         if "instagramUser" in data:
+            _args = sys.modules["lib.environments"].args()
             print("PULL  [%d] user credentials @%s successfully pulled from server" % (int(time.time()), source))
-            sys.modules["lib.environments"]._args.username = data["instagramUser"]
-            sys.modules["lib.environments"]._args.password = data["instagramPassword"]
-            sys.modules["lib.environments"]._args.proxy = (data["proxy"] if "proxy" in data else None)
+            _args.username = data["instagramUser"]
+            _args.password = data["instagramPassword"]
+            _args.proxy = (data["proxy"] if "proxy" in data else None)
+            if "tasks" in data and data["tasks"] is not None and not _args.tasks:
+                _args.tasks = data["tasks"]
+
         else:
             print("PULL  [%d] no credentials @%s available from server" % (int(time.time()), source))

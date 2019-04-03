@@ -10,19 +10,16 @@ TRACK_FOLLOWER_COUNT_GAP = 3600
 #
 #
 #
-tasks_dict = {}
-maneuver_queue = None
-
-env.log("loading tasks...")
+env.info("loading tasks...")
 tasks_dict = tasks.load(env.args().tasks)
 maneuver_queue = tasks.ManeuverQueue()
 maneuver_queue.add_from_tasks(tasks_dict)
 
 if not maneuver_queue or maneuver_queue.empty():
-    env.log("tasks not valid. script quited")
+    env.info("tasks not valid. script quited")
     exit(0)
 else:
-    env.log("tasks loaded")
+    env.info("tasks loaded: " + str(env.args().tasks))
 
 session = InstaPy(
     bypass_suspicious_attempt=True,

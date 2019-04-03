@@ -275,6 +275,10 @@ def log(buffer, title="LOG  ", account="messages"):
         _reporter.send(buffer, account)
 
 
+def info(buffer):
+    log(buffer, title="INFO ")
+
+
 def json(obj, account="json"):
     reporter.StreamHub.stdout.write(account + ": " + _json.dumps(obj) + "\n")
     if _reporter:
