@@ -8,14 +8,9 @@ env.config(version="south-asia-ff-1.0")
 SLEEP_BETWEEN_EACH_LIKE = 60
 TRACK_FOLLOWER_COUNT_GAP = 3600
 
-tags = ['215567918/kathmandu-nepal/', '278360789/nepal/', '498870164/new-delhi/','302416621/taiwan/']
+tags = ['215567918/kathmandu-nepal/', '278360789/nepal/', '498870164/new-delhi/', '302416621/taiwan/']
 
-session = InstaPy(
-    headless_browser=True,
-    bypass_suspicious_attempt=True,
-    use_firefox=True,
-    **env.arguments()
-)
+session = InstaPy(**env.arguments())
 
 with smart_run(session):
     env.report_success(session)

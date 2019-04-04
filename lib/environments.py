@@ -168,14 +168,18 @@ def init_environment(**kw):
     # config reporter fields
     _reporter_fields.update({
         "status": "active",
-        # "instance": _args.instance,
         "instagramUser": _args.username,
         "instagramPassword": _args.password,
+        "systemUser": getpass.getuser(),
+        # "instance": _args.instance,
         # "proxy": _args.proxy,
-        # "systemUser": getpass.getuser()
     })
 
     # also put all commandline arguments into report fields
+    # so _reporter_fields includes:
+    #   (1) all commandline arguments, including these adjusted by "--pull" and "env.config"
+    #   (2) 4 additional attributes defined above
+    #
     _reporter_fields.update(_args.__dict__)
     remove_none(_reporter_fields)
 
@@ -203,7 +207,8 @@ def process_arguments(**kw):
         if not hasattr(_args, key) or getattr(_args, key) is None:
             setattr(_args, key, kw[key])
 
-    # see if we need to pull user credentials from server
+    # see if arguments says to pull user credentials from server,
+    # do it right now
     # pulled data will be merged into command line arguments
     if _args.pull is not None:
         from . import pull
@@ -380,9 +385,12 @@ def report_success(session):
     _login_success = True
     proxy_string = session.proxy_string if hasattr(session, "proxy_string") else ""
 
+    # update these attributes that may changed during selenium initialization or login
     update_attributes = {
-        "systemUser": getpass.getuser(),
         "proxy": proxy_string,
+        "username": session.username,
+        "password": session.password,
+        "instagramUsername": session.username,
         "instagramPassword": session.password,
     }
     if session.password:
