@@ -190,10 +190,10 @@ def set_selenium_local_session_patch(self):
                     if "string" not in proxy:
                         InstaPy.env.event("SELENIUM", "ALLOCATE-PROXY-FAILED")
                         exit(0)
-                    InstaPy.super_print("[selenium] proxy allocated: "
+                    InstaPy.super_print("[selenium] proxy allocated:\n%s\n"
                                         "%d current-clients, %d failed-attempts, %d history-connections" %
-                                        (proxy["clientsCount"], proxy["failsCount"],
-                                         proxy["historyCount"]))
+                                        (proxy["string"], proxy["clientsCount"],
+                                         proxy["failsCount"], proxy["historyCount"]))
                     proxy_string = proxy["string"]
                 elif query_mode:
                     InstaPy.env.event("SELENIUM", "WAITING-FOR-PROXY")

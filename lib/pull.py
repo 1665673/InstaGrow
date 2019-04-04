@@ -45,6 +45,16 @@ def get_data(_username, _sources=[], _env={}):
             return {}
 
 
+def print_details(data):
+    tasks = ""
+    if "tasks" in data and data["tasks"] is not None:
+        tasks = "--tasks "
+        for t in data["tasks"]:
+            tasks += t + " "
+    print("%s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
+                           data["proxy"] if "proxy" in data else "", tasks))
+
+
 if not is_module:
     parser = argparse.ArgumentParser()
     parser.add_argument("username", type=str)
@@ -56,13 +66,7 @@ if not is_module:
 
     data = get_data(username, sources, args.__dict__)
     if "instagramUser" in data:
-        tasks = ""
-        if "tasks" in data and data["tasks"] is not None:
-            tasks = "-t "
-            for t in data["tasks"]:
-                tasks += t + " "
-        print("%s %s %s %s" % (data["instagramUser"], data["instagramPassword"],
-                               data["proxy"] if "proxy" in data else "", tasks))
+        print_details(data)
     else:
         print("no credentials available from server")
 
@@ -86,6 +90,7 @@ def userdata(_username, _sources=[], _env={}):
         if "instagramUser" in data:
             _args = sys.modules["lib.environments"].args()
             print("PULL  [%d] user credentials @%s successfully pulled from server" % (int(time.time()), source))
+            print_details(data)
             if _args.username is None:
                 _args.username = data["instagramUser"]
             if _args.password is None:

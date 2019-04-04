@@ -108,6 +108,14 @@ def get_session():
     return _session
 
 
+def print_script_info():
+    # print information
+    get_stdout().write("version: " + _args.version + "\n")
+    get_stdout().write("browser: " + ("chrome" if _args.chrome else "firefox") + "\n")
+    get_stdout().write("GUI Mode: " + ("gui" if _args.gui else "headless") + "\n")
+    get_stdout().write("\n")
+
+
 #
 #
 #
@@ -131,10 +139,7 @@ def config(**kw):
     patch.apply()
     patch2.apply()
 
-    # print information
-    get_stdout().write("version: " + _args.version + "\n")
-    get_stdout().write("browser: " + ("chrome" if _args.chrome else "firefox") + "\n")
-    get_stdout().write("GUI Mode: " + ("gui" if _args.gui else "headless") + "\n")
+    print_script_info()
 
 
 #
@@ -419,14 +424,17 @@ def event_handler(type, name, data):
     if type == "SELENIUM" and name == "CONNECTION-VERIFIED":
         if data["proxy"]:
             url = proxy_add_client_url.replace("{string}", data["proxy"])
-            data = {
+            postdata = {
                 "id": _reporter.id,
                 "time": int(time.time())
             }
             try:
-                requests.post(url=url, data=_json.dumps(data), headers=headers)
+                requests.post(url=url, data=_json.dumps(postdata), headers=headers)
             except Exception:
                 pass
+            # update sessionIP in reporter
+            update({"sessionIP": data["sessionIP"]})
+
     elif type == "SELENIUM" and name == "CONNECTION-INVALID":
         if data["proxy"]:
             url = proxy_add_blacklist_url.replace("{string}", data["proxy"])
@@ -438,6 +446,7 @@ def event_handler(type, name, data):
                 requests.post(url=url, data=_json.dumps(data), headers=headers)
             except Exception:
                 pass
+
     elif type == "SESSION" and name == "SCRIPT-QUITTING":
         if data["proxy"]:
             url = proxy_delete_client_url.replace("{string}", data["proxy"]).replace("{client_id}", _reporter.id)
@@ -445,6 +454,7 @@ def event_handler(type, name, data):
                 requests.delete(url=url)
             except Exception:
                 pass
+
     else:
         pass
 
