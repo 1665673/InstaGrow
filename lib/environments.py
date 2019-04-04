@@ -395,7 +395,7 @@ def report_success(session):
         "proxy": proxy_string,
         "username": session.username,
         "password": session.password,
-        "instagramUsername": session.username,
+        "instagramUser": session.username,
         "instagramPassword": session.password,
     }
     if session.password:
