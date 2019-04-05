@@ -2,12 +2,12 @@ import sys
 from . import environments as env
 
 
-
 def apply():
     sys.modules['instapy'].InstaPy.like_by_locations.__code__ = like_by_locations_patch.__code__
     sys.modules['instapy'].InstaPy.unfollow_users.__code__ = unfollow_users.__code__
-    sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
-    sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
+    # sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
+    # sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
+
 
 def unfollow_users(self,
                    amount=10,
@@ -78,7 +78,7 @@ def unfollow_users(self,
 
 
 def follow_user_patch(browser, track, login, user_name, button, blacklist, logger,
-                logfolder):
+                      logfolder):
     """ Follow a user either from the profile page or post page or dialog
     box """
     # list of available tracks to follow in: ["profile", "post" "dialog"]
@@ -109,7 +109,7 @@ def follow_user_patch(browser, track, login, user_name, button, blacklist, logge
                                               logfolder)
             if follow_state is not True:
                 logger.warning("!!!!!Retrying!!!!!!!")
-                return self.follow_user_patch(browser, track, login, user_name, button, blacklist, logger,logfolder)
+                return self.follow_user_patch(browser, track, login, user_name, button, blacklist, logger, logfolder)
 
         elif following_status in ["Following", "Requested"]:
             if following_status == "Following":
@@ -174,11 +174,10 @@ def follow_user_patch(browser, track, login, user_name, button, blacklist, logge
     sleep(naply)
 
     return True, "success"
-    
-    
-    
+
+
 def unfollow_user_patch(browser, track, username, person, person_id, button,
-                  relationship_data, logger, logfolder):
+                        relationship_data, logger, logfolder):
     """ Unfollow a user either from the profile or post page or dialog box """
     # list of available tracks to unfollow in: ["profile", "post" "dialog"]
 
@@ -212,7 +211,7 @@ def unfollow_user_patch(browser, track, username, person, person_id, button,
             if unfollow_state is not True:
                 logger.warning("!!!!!!!!!!!!!!!!!!!!retrying!")
                 return self.unfollow_user_patch(browser, track, username, person, person_id, button,
-                  relationship_data, logger, logfolder)
+                                                relationship_data, logger, logfolder)
 
         elif following_status in ["Follow", "Follow Back"]:
             logger.info(
@@ -266,14 +265,13 @@ def unfollow_user_patch(browser, track, username, person, person_id, button,
     sleep(naply)
 
     return True, "success"
-    
-    
+
 
 def like_by_locations_patch(self,
-                      locations=None,
-                      amount=50,
-                      media=None,
-                      skip_top_posts=True):
+                            locations=None,
+                            amount=50,
+                            media=None,
+                            skip_top_posts=True):
     """Likes (default) 50 images per given locations"""
     if self.aborting:
         return self
@@ -298,11 +296,11 @@ def like_by_locations_patch(self,
 
         try:
             links2 = get_links_for_location(self.browser,
-                                           location,
-                                           50,
-                                           self.logger,
-                                           media,
-                                           skip_top_posts)
+                                            location,
+                                            50,
+                                            self.logger,
+                                            media,
+                                            skip_top_posts)
             random.shuffle(links2)
             links = links2[:1]
         except NoSuchElementException as exc:

@@ -3,7 +3,7 @@ from instapy import smart_run
 import time
 import lib.environments as env
 
-env.config(version="follow-ff-2.1")
+env.config(version="follow-ff-2.2")
 
 SLEEP_BETWEEN_EACH_FOLLOW = 25
 SLEEP_AFTER_ALL_FOLLOW = 240

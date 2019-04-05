@@ -3,7 +3,7 @@ from instapy.util import smart_run
 import time
 import lib.environments as env
 
-env.config(version="south-asia-ff-1.0")
+env.config(version="south-asia-ff-1.1")
 
 SLEEP_BETWEEN_EACH_LIKE = 60
 TRACK_FOLLOWER_COUNT_GAP = 3600
