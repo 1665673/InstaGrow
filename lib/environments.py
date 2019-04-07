@@ -510,7 +510,7 @@ def _fetch_tasks():
         if not task["status"] or task["status"] == "PENDING":
             new_tasks[key] = task
     if len(new_tasks) > 0:
-        log("got %d new tasks from server" % len(new_tasks), title="TASK ")
+        log("got %d new tasks from server" % len(new_tasks), title="TASK")
     return new_tasks
 
 

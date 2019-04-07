@@ -2,6 +2,10 @@ import time
 from . import environments as env
 
 
+def hold_on(session, target):
+    time.sleep(int(target))
+
+
 def restart_script(session, message):
     env.event("TASK", "RESTARTING-SCRIPT", {"message": message})
     env.restart_script(session, message)
@@ -30,6 +34,7 @@ def like_by_location(session, target):
 
 
 handlers = {
+    "hold-on": hold_on,
     "restart-script": restart_script,
     "follow-user": follow_user,
     "unfollow-user": unfollow_user,
