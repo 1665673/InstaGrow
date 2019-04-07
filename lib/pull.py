@@ -11,9 +11,9 @@ SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgr
 
 pull_url = SERVER + "/admin/credentials/pull"
 
-is_module = False
-if "instapy" in sys.modules:
-    is_module = True
+# is_module = False
+# if "instapy" in sys.modules:
+#    is_module = True
 
 #
 #   input & output
@@ -52,23 +52,7 @@ def print_details(data):
         for t in data["tasks"]:
             tasks += t + " "
     print("%s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
-                           data["proxy"] if "proxy" in data else "", tasks))
-
-
-if not is_module:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("username", type=str)
-    parser.add_argument("-v", "--version", nargs='?', type=str)
-    parser.add_argument("-t", "--tasks", nargs='?', type=str)
-    args = parser.parse_args()
-    username = args.username
-    sources = ["version", "tasks"]
-
-    data = get_data(username, sources, args.__dict__)
-    if "instagramUser" in data:
-        print_details(data)
-    else:
-        print("no credentials available from server")
+                             data["proxy"] if "proxy" in data else "", tasks))
 
 
 def userdata(_username, _sources=[], _env={}):
@@ -102,3 +86,19 @@ def userdata(_username, _sources=[], _env={}):
 
         else:
             print("PULL  [%d] no credentials @%s available from server" % (int(time.time()), source))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("username", type=str)
+    parser.add_argument("-v", "--version", nargs='?', type=str)
+    parser.add_argument("-t", "--tasks", nargs='?', type=str)
+    args = parser.parse_args()
+    username = args.username
+    sources = ["version", "tasks"]
+
+    data = get_data(username, sources, args.__dict__)
+    if "instagramUser" in data:
+        print_details(data)
+    else:
+        print("no credentials available from server")

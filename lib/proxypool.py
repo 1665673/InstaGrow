@@ -1,6 +1,6 @@
 import requests
 import json
-import sys
+# import sys
 import argparse
 import os
 import time
@@ -12,9 +12,9 @@ SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgr
 #
 #   fucntion for apply a proxy
 #
-is_module = False
-if "instapy" in sys.modules:
-    is_module = True
+# is_module = False
+# if "instapy" in sys.modules:
+#    is_module = True
 
 allocate_proxy_url = SERVER + "/admin/proxy/allocate"
 mark_fail_url = SERVER + "/admin/proxy/{string}/fails"
@@ -50,7 +50,7 @@ def mark_fail(proxy, client_id="proxypool.py"):
 #
 
 
-if not is_module:
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("current_proxy", nargs='?', type=str)
     parser.add_argument("-f", "--fail", action="store_true")

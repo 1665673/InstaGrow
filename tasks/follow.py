@@ -1,15 +1,16 @@
+name = "follow"
 title = "follow then un-follow"
 loop = True
-actions = [
+sub_tasks = [
     {
-        "type": "follow-by-list",
+        "type": "follow-user",
         "list": ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian', 'arianagrande', 'instagram',
                  'beyonce', 'kyliejennr', 'katyperry', 'therock'],
         "cool-down": 50,
         "delay-upon-completion": 240
     },
     {
-        "type": "unfollow-by-list",
+        "type": "unfollow-user",
         "list": ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian', 'arianagrande', 'instagram',
                  'beyonce', 'kyliejennr', 'katyperry', 'therock'],
         "cool-down": 40,

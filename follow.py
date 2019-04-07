@@ -28,6 +28,7 @@ with smart_run(session):
                 time.sleep(SLEEP_BETWEEN_EACH_FOLLOW)
             except Exception as e:
                 env.error("follow_by_list", "exception", str(e))
+            env.fetch_task_and_execute()
 
         env.log("[sleep {0} seconds before unfollowing]".format(SLEEP_AFTER_ALL_FOLLOW))
         time.sleep(SLEEP_AFTER_ALL_FOLLOW)
@@ -41,5 +42,6 @@ with smart_run(session):
                 time.sleep(SLEEP_BETWEEN_EACH_UNFOLLOW)
             except Exception as e:
                 env.error("unfollow_users", "exception", str(e))
+            env.fetch_task_and_execute()
 
         env.track_follower_count(session, TRACK_FOLLOWER_COUNT_GAP)

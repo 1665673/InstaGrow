@@ -1,8 +1,9 @@
+name = "like"
 title = "like by tags"
 loop = True
-actions = [
+sub_tasks = [
     {
-        "type": "like-by-tags",
+        "type": "like-by-tag",
         "list": ['love', 'instagood', 'photooftheday', 'fashion'],
         "cool-down": 180,
         "delay-upon-completion": 0

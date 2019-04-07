@@ -13,6 +13,7 @@ from dotenv import load_dotenv, find_dotenv
 from . import reporter
 from . import patch
 from . import patch2
+from . import tasks
 
 #
 #
@@ -47,6 +48,7 @@ _arguments = {}
 _reporter = None
 _reporter_fields = {}
 _session = None
+_tasks_dict = None
 # declaim a global logger
 logger = logging.getLogger()
 
@@ -462,6 +464,96 @@ def event_handler(type, name, data):
 #
 #
 #
+#   convenient wrapped task interfaces
+#
+#
+#
+def load_tasks(tasks_list):
+    global _tasks_dict
+    _tasks_dict = tasks.load(tasks_list, task_queued, task_executing, task_finished)
+    action_queue = tasks.ActionQueue()
+    action_queue.add_from_task_dict(_tasks_dict)
+    return action_queue
+
+
+set_task_status_url = SERVER + "/admin/script/{id}/tasks"
+fetch_task_url = SERVER + "/admin/script/{id}/tasks"
+
+
+def set_task_status(task_id, status):
+    headers = {'content-type': 'application/json'}
+    data = {
+        "taskID": task_id,
+        "status": status
+    }
+    url = set_task_status_url.replace("{id}", _reporter.id)
+    try:
+        requests.put(url=url, data=_json.dumps(data), headers=headers)
+    except Exception:
+        pass
+
+
+def get_tasks():
+    url = fetch_task_url.replace("{id}", _reporter.id)
+    try:
+        return requests.get(url=url).json()
+    except Exception:
+        return {}
+
+
+def _fetch_tasks():
+    all_tasks = get_tasks()
+    # filter old tasks
+    new_tasks = {}
+    for key in all_tasks:
+        task = all_tasks[key]
+        if not task["status"] or task["status"] == "PENDING":
+            new_tasks[key] = task
+    if len(new_tasks) > 0:
+        log("got %d new tasks from server" % len(new_tasks), title="TASK ")
+    return new_tasks
+
+
+def fetch_tasks(action_queue):
+    new_tasks = _fetch_tasks()
+    task_dict = {}
+    for key in new_tasks:
+        task_dict[key] = tasks.load_task_by_definition(new_tasks[key], task_queued, task_executing, task_finished)
+    try:
+        action_queue.add_from_task_dict(task_dict)
+    except Exception as e:
+        error("TASK", "INVALID-TASKS", task_dict)
+
+
+def fetch_task_and_execute():
+    action_queue = tasks.ActionQueue()
+    fetch_tasks(action_queue)
+    while not action_queue.empty():
+        action = action_queue.get()
+        action.execute()
+
+        env.fetch_tasks(action_queue)
+        env.track_follower_count(session, TRACK_FOLLOWER_COUNT_GAP)
+
+
+def task_queued(task):
+    # event("TASK", "QUEUED", {"time": int(time.time()), "id": task.id, "title": task.title})
+    set_task_status(task.id, "QUEUED")
+
+
+def task_executing(task, type, target):
+    # event("TASK", "EXECUTING", {"time": int(time.time()), "id": task.id, "title": task.title})
+    set_task_status(task.id, "EXECUTING")
+
+
+def task_finished(task):
+    # event("TASK", "FINISHED", {"time": int(time.time()), "id": task.id, "title": task.title})
+    set_task_status(task.id, "FINISHED")
+
+
+#
+#
+#
 #   other miscellaneous functions
 #
 #
@@ -521,6 +613,11 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
         followers = get_follower_num(session)
         data("followers", followers)
         return followers
+
+
+def restart_script(session, message):
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
 
 
 #

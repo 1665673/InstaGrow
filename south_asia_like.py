@@ -22,4 +22,5 @@ with smart_run(session):
             except Exception as e:
                 env.error("like_by_tags", "exception", str(e))
 
+        env.fetch_task_and_execute()
         env.track_follower_count(session, TRACK_FOLLOWER_COUNT_GAP)
