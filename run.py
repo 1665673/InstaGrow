@@ -22,7 +22,6 @@ session = InstaPy(**env.arguments())
 
 with smart_run(session):
     env.report_success(session)
-    env.set_session(session)
 
     while not action_queue.empty():
         action = action_queue.get()
