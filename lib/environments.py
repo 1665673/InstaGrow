@@ -532,9 +532,7 @@ def fetch_task_and_execute():
     while not action_queue.empty():
         action = action_queue.get()
         action.execute()
-
-        env.fetch_tasks(action_queue)
-        env.track_follower_count(session, TRACK_FOLLOWER_COUNT_GAP)
+        fetch_tasks(action_queue)
 
 
 def task_queued(task):
