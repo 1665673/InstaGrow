@@ -33,14 +33,12 @@ def main():
                                        'I like your stuff'])
 
         while True:
+            cur = time.time()
 
             for location in locations:
-                cur = time.time()
-
                 session.comment_by_locations([location], amount=1, skip_top_posts=True)
 
                 env.fetch_task_and_execute()
-
                 env.log(60)
                 time.sleep(60)
 
