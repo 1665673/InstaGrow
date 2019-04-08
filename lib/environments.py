@@ -26,7 +26,7 @@ from . import tasks
 #
 #
 #
-#
+ENVIRONMENT_VERSION = "0.2"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -174,6 +174,7 @@ def init_environment(**kw):
 
     # config reporter fields
     _reporter_fields.update({
+        "environmentVersion": ENVIRONMENT_VERSION,
         "status": "active",
         "instagramUser": _args.username,
         "instagramPassword": _args.password,
@@ -616,6 +617,7 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
 
 
 def restart_script(session, message):
+    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
