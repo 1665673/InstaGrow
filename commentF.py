@@ -12,6 +12,7 @@ VERSION = "follow-comment-1.0"
 # main customization
 SLEEP_AFTER_ALL_COMMENT = 240
 SLEEP_DELAY = 25
+TRACK_FOLLOWER_COUNT_GAP = 3600
 
 locations = ['6889842/paris-france/', '20188833/manhattan-new-york/', '17326249/moscow-russia/',
              '213385402/london-united-kingdom/', '213163910/sao-paulo-brazil/', '212999109/los-angeles-california/']
@@ -42,6 +43,7 @@ def main():
                 env.log(60)
                 time.sleep(60)
 
+            env.track_follower_count(session, TRACK_FOLLOWER_COUNT_GAP)
             env.log(SLEEP_AFTER_ALL_COMMENT)
             time.sleep(SLEEP_AFTER_ALL_COMMENT)
             env.log(time.time() - cur)
