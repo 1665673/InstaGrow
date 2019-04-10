@@ -11,8 +11,8 @@ terms                           examples
 
 tasks:                          [ follow.py, like-asia.py, ...]
     task                        follow.py, may or may not loop
-        sub_tasks:               [ follow-user [list], unfollow-user [list], ...]
-            sub_task             follow-user [list], sleep sometime upon completion
+        sub_tasks:              [ follow-user [list], unfollow-user [list], ...]
+            sub_task            follow-user [list], sleep sometime upon completion
                 actions:        follow-user [list], sleep sometime between each action
                     action:     (follow-user, justinbiever)
                     
@@ -59,7 +59,7 @@ class Action:
         if self.is_end():
             return
         try:
-            count_action = len(self._actions()["list"])
+            count_action = len(self._actions()["targets"])
             self.index_action += 1
             # when calculating next performing time,
             # make sure current self.ready is at least @ current time time.time()
@@ -74,15 +74,15 @@ class Action:
                 if not self.is_end():
                     self.index_action = 0
                     self.index_sub_task += 1
+                    self.ready += self._actions()["delay-before-start"]
                 else:
                     if self._task().loop:
                         self.index_action = 0
                         self.index_sub_task = 0
+                        self.ready += self._actions()["delay-before-start"]
                     # this iterator reaches the end
                     else:
                         pass
-
-
         except Exception as e:
             pass
 
@@ -102,11 +102,12 @@ class Action:
             return None
         try:
             actions = self._actions()
-            action_type = actions["type"]
-            target = actions["list"][self.index_action]
+            action_init = actions["init"]
+            action_type = actions["action"]
+            target = actions["targets"][self.index_action]
 
             self.task.executing(action_type, target)
-            result = handlers.execute(action_type, target, self.ready)
+            result = handlers.execute(action_init, action_type, target, self.ready)
             return result
         except Exception as e:
             return None
@@ -123,15 +124,36 @@ class Task:
         self.on_executing = on_executing
         self.on_queued = on_queued
 
+        if not self.id:
+            raise Exception("invalid task: invalid task-id")
+        if not self.sub_tasks:
+            raise Exception("invalid task: missing sub-task list or empty list")
+
+        # tidy up sub_tasks definition
+        for sub_task in sub_tasks:
+            if "action" not in sub_task:
+                raise Exception("invalid task: missing sub-task type")
+            if "targets" not in sub_task or len(sub_task["targets"]) == 0:
+                raise Exception("invalid task: missing action targets or empty target list")
+            if "init" not in sub_task:
+                sub_task["init"] = None
+            if "cool-down" not in sub_task:
+                sub_task["cool-down"] = 0
+            if "delay-before-start" not in sub_task:
+                sub_task["delay-before-start"] = 0
+            if "delay-upon-completion" not in sub_task:
+                sub_task["delay-upon-completion"] = 0
+
     # get first-action iterator
     def begin(self, begin_time=time.time()):
+        begin_time += self.sub_tasks[0]["delay-before-start"]
         return Action(self, ready=begin_time)
 
     # get end-action iterator
     def end(self):
         try:
-            return Action(self, len(self.sub_tasks) - 1, len(self.sub_tasks[-1]["list"]))
-        except Exception as e:
+            return Action(self, len(self.sub_tasks) - 1, len(self.sub_tasks[-1]["targets"]))
+        except Exception:
             return self.begin()
 
     # this function will be called upon queued
@@ -169,39 +191,39 @@ def load_task_from_file(task_path, on_queued=None, on_executing=None, on_finishe
     try:
         module = importlib.import_module(task_path)
     except Exception as e:
-        return {}
-    task = Task(id=module.name + "-" + str(int(time.time())),
-                title=module.title,
-                loop=module.loop,
-                sub_tasks=module.sub_tasks,
-                on_queued=on_queued,
-                on_executing=on_executing,
-                on_finished=on_finished
-                )
-    if task.sub_tasks and len(task.sub_tasks) > 0:
+        raise e
+    try:
+        task = Task(id=module.name + "-" + str(int(time.time())),
+                    title=module.title,
+                    loop=module.loop,
+                    sub_tasks=module.sub_tasks,
+                    on_queued=on_queued,
+                    on_executing=on_executing,
+                    on_finished=on_finished
+                    )
         return task
-    else:
-        return None
+    except Exception as e:
+        raise e
 
 
 def load_task_by_definition(task_definition, on_queued=None, on_executing=None, on_finished=None):
     task_id = task_definition["id"] if "id" in task_definition else \
         task_definition["name"] + "-" + str(int(time.time()))
-    task = Task(id=task_id,
-                title=task_definition["title"],
-                loop=task_definition["loop"],
-                sub_tasks=task_definition["sub_tasks"],
-                on_queued=on_queued,
-                on_executing=on_executing,
-                on_finished=on_finished
-                )
-    if task.sub_tasks and len(task.sub_tasks) > 0:
+    try:
+        task = Task(id=task_id,
+                    title=task_definition["title"],
+                    loop=task_definition["loop"],
+                    sub_tasks=task_definition["sub_tasks"],
+                    on_queued=on_queued,
+                    on_executing=on_executing,
+                    on_finished=on_finished
+                    )
         return task
-    else:
-        return None
+    except Exception as e:
+        raise e
 
 
-def load(task_file_names, on_queued=None, on_executing=None, on_finished=None):
+def load_all_task_by_names(task_file_names, on_queued=None, on_executing=None, on_finished=None):
     if not task_file_names:
         return {}
     tasks = {}
@@ -211,7 +233,7 @@ def load(task_file_names, on_queued=None, on_executing=None, on_finished=None):
             task = load_task_from_file(task_path, on_queued, on_executing, on_finished)
             tasks[task.id] = task
         except Exception as e:
-            return []
+            raise e
     return tasks
 
 
@@ -238,10 +260,6 @@ automatically loads the next action [from-the-same-task-module]
 
 
 class ActionQueue(queue.PriorityQueue):
-    def add_from_task_dict(self, tasks):
-        for id in tasks:
-            self.add_from_task(tasks[id])
-
     def add_from_task(self, task):
         try:
             if task:
@@ -252,13 +270,12 @@ class ActionQueue(queue.PriorityQueue):
                 #
                 task.queued()
         except Exception as e:
-            raise
+            raise e
 
     def add_action(self, action):
         self.put(action)
 
     def get(self, block=False, timeout=None):
-        action = None
         try:
             action = super(ActionQueue, self).get(block, timeout)
             #
@@ -273,8 +290,10 @@ class ActionQueue(queue.PriorityQueue):
                 #
                 action.task.finished()
 
+            return action
+
         except Exception as e:
-            return None
+            raise e
 
         # wait until this action is ready
         #   this logic has moved 
@@ -284,5 +303,5 @@ class ActionQueue(queue.PriorityQueue):
         # current = time.time()
         # if current < ready:
         #     time.sleep(ready - current)
-
-        return action
+        #
+        # return action

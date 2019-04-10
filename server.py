@@ -5,6 +5,7 @@ import re
 import os
 import sys
 
+
 class Server(BaseHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super(BaseHTTPRequestHandler, self).__init__(*a, **kw)
@@ -35,7 +36,9 @@ class Server(BaseHTTPRequestHandler):
                 action = parts[0]
                 param = parts[1]
 
-                if action == "start":
+                if action == "login":
+                    self.login_script(param)
+                elif action == "start":
                     self.start_script(param)
                 elif action == "stop":
                     self.stop_script(param)
@@ -48,23 +51,53 @@ class Server(BaseHTTPRequestHandler):
 
         return bytes("error", "UTF-8")
 
-    def start_script(self, instance):
+    def login_script(self, param):
+        instance = param
+        run_login_script(instance)
+
+    def start_script(self, param):
+        print(sys.argv)
+        print(*sys.argv)
+
+    def stop_script(self, param):
+        print("instance stopped:", param)
+
+    def restart_script(self, param):
+        print("instance restarted:", param)
+
+
+def run_login_script(instance):
+    if not instance:
+        return
+    argv = ["login.py", "-q", "-ap", "-i", instance]
+    run_script(argv)
+
+
+def run_script(argv):
+    n = os.fork()
+    if n > 0:
+        print("Parent process and id is : ", os.getpid())
+    else:
         python = sys.executable
-        os.execl(python, python, *sys.argv)
-
-    def stop_script(self, instance):
-        print("instance stopped:", instance)
-
-    def restart_script(self, instance):
-        print("instance restarted:", instance)
+        os.execl(python, python, *argv)
 
 
 HOST_NAME = 'localhost'
 PORT_NUMBER = 8000
 
+
+
+
+def checkin_server():
+    os.getpid()
+
+
 if __name__ == '__main__':
     httpd = HTTPServer((HOST_NAME, PORT_NUMBER), Server)
     print(time.asctime(), 'Server UP - %s:%s' % (HOST_NAME, PORT_NUMBER))
+
+    checkin_server()
+
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:

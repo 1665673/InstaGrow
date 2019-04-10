@@ -3,9 +3,8 @@ title = "restart script"
 loop = False
 sub_tasks = [
     {
-        "type": "restart-script",
-        "list": ["explicitly restart this script"],
-        "cool-down": 0,
-        "delay-upon-completion": 0
+        "action": "restart-script",
+        "targets": ["explicitly restart this script"],
+        "delay-before-start": -9999  # make it of extra high priority over current tasks
     }
 ]

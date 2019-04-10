@@ -3,9 +3,8 @@ title = "like by tags"
 loop = True
 sub_tasks = [
     {
-        "type": "like-by-tag",
-        "list": ['love', 'instagood', 'photooftheday', 'fashion'],
-        "cool-down": 180,
-        "delay-upon-completion": 0
+        "action": "like-by-tag",
+        "targets": ['love', 'instagood', 'photooftheday', 'fashion'],
+        "cool-down": 144  # 450-actions = 900-likes = 18-hours
     }
 ]

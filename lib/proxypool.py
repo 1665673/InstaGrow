@@ -50,7 +50,7 @@ def mark_fail(proxy, client_id="proxypool.py"):
 #
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("current_proxy", nargs='?', type=str)
     parser.add_argument("-f", "--fail", action="store_true")
@@ -70,3 +70,7 @@ if __name__ == "__main__":
             else:
                 res = mark_fail(proxy)
             print(res)
+
+
+if __name__ == "__main__":
+    main()

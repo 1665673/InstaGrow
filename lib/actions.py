@@ -1,12 +1,15 @@
 import time
+import datetime
 from . import environments as env
 
 
 def hold_on(session, target):
-    time.sleep(int(target))
+    seconds = target
+    time.sleep(int(seconds))
 
 
-def restart_script(session, message):
+def restart_script(session, target):
+    message = target
     env.event("TASK", "RESTARTING-SCRIPT", {"message": message})
     env.restart_script(session, message)
 
@@ -26,11 +29,33 @@ def unfollow_user(session, target):
 
 
 def like_by_tag(session, target):
+    utc = datetime.datetime.utcnow()
+    if 7 <= utc.hour < 15:
+        env.info("time is between 00:00 and 07:59 PST, skip this action")
+        return
+    session.like_by_tags([target], amount=1, interact=False)
+    # time.sleep(5)
     session.like_by_tags([target], amount=1, interact=False)
 
 
 def like_by_location(session, target):
+    utc = datetime.datetime.utcnow()
+    if 7 <= utc.hour < 15:
+        env.info("time is between 00:00 and 07:59 PST, skip this action")
+        return
     session.like_by_locations([target], amount=1)
+    # time.sleep(5)
+    session.like_by_locations([target], amount=1)
+
+
+def comment_by_location(session, target):
+    utc = datetime.datetime.utcnow()
+    if 7 <= utc.hour < 15:
+        env.info("time is between 00:00 and 07:59 PST, skip this action")
+        return
+    session.comment_by_locations([target], amount=1, skip_top_posts=True)
+    # time.sleep(5)
+    session.comment_by_locations([target], amount=1, skip_top_posts=True)
 
 
 handlers = {
@@ -39,20 +64,35 @@ handlers = {
     "follow-user": follow_user,
     "unfollow-user": unfollow_user,
     "like-by-tag": like_by_tag,
-    "like-by-location": like_by_location
+    "like-by-location": like_by_location,
+    "comment-by-location": comment_by_location
 }
 
 
-def execute(action_type, target, ready):
+def init_comment_by_location(session):
+    session.set_do_comment(enabled=True, percentage=100)
+    session.set_comments(comments=['Very good one', 'This is so Great', 'Really great', 'Awesome', 'Really Cool',
+                                   'I like your stuff'])
+
+
+inits = {
+    "init-comment-by-location": init_comment_by_location
+}
+
+
+def execute(action_init, action_type, target, ready):
     current = time.time()
     if current < ready:
         delay = ready - current
-        env.log("sleep %1.2fs till task (%s, %s) is ready" % (delay, action_type, target), title="TASK")
+        env.log("sleep %1.2fs till task (%s, %s) is ready" % (delay, action_type, target), title="TASK ")
         time.sleep(delay)
 
-    env.log("now performing task (%s, %s)" % (action_type, target), title="TASK")
+    env.log("now performing task (%s, %s)" % (action_type, target), title="TASK ")
     session = env.get_session()
+
     try:
+        if action_init:
+            inits[action_init](session)
         return handlers[action_type](session, target)
     except Exception as e:
         env.error(action_type, "exception", str(e))

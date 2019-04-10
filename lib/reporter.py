@@ -49,6 +49,16 @@ class StreamHub(io.StringIO):
         if self.report and self.reporter:
             self.reporter.send(buffer)
 
+    def flush(self):
+        if self.save:
+            super(StreamHub, self).flush()
+        if self.print and StreamHub.stdout:
+            StreamHub.stdout.flush()
+        if self.log and StreamHub.stderr:
+            StreamHub.stderr.flush()
+        if self.report and self.reporter:
+            self.reporter.flush()
+
 
 class Reporter:
     def __init__(self):
@@ -120,3 +130,6 @@ class Reporter:
     def push(self, array, account):
         self.__merge(array, account)
         self.__post()
+
+    def flush(self):
+        pass

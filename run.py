@@ -8,7 +8,6 @@ TRACK_FOLLOWER_COUNT_GAP = 3600
 
 #
 #
-#
 env.info("loading tasks...")
 action_queue = env.load_tasks(env.args().tasks)
 

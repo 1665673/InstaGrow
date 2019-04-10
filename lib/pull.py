@@ -4,6 +4,8 @@ import json
 import sys
 import os
 import time
+import copy
+import pickle
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -15,29 +17,23 @@ pull_url = SERVER + "/admin/credentials/pull"
 # if "instapy" in sys.modules:
 #    is_module = True
 
-#
-#   input & output
-#
-username = None
-sources = None
-data = None
+
+all_fields = ["instagramPassword", "proxy", "tasks", "cookies"]
 
 
 #
 #
 #
-
-
-def get_data(_username, _sources=[], _env={}):
-    if _username:  # and _version: version is optional
+def get_data(username, sources=[], env={}):
+    if username:  # and _version: version is optional
         headers = {'content-type': 'application/json'}
         req = {
-            "username": _username
+            "username": username
         }
-        if _sources is not None and len(_sources) > 0 and type(_env) is dict:
-            for source in _sources:
-                if source in _env and _env[source] is not None:
-                    req.update({source: _env[source]})
+        if type(sources) is list and len(sources) > 0 and type(env) is dict:
+            for source in sources:
+                if source in env and env[source] is not None:
+                    req.update({source: env[source]})
         try:
             res = requests.post(url=pull_url, data=json.dumps(req), headers=headers).json()
             return res
@@ -45,50 +41,77 @@ def get_data(_username, _sources=[], _env={}):
             return {}
 
 
-def print_details(data):
+def print_details(data, fields):
+    data = copy.copy(data)
     tasks = ""
     if "tasks" in data and data["tasks"] is not None:
         tasks = "--tasks "
         for t in data["tasks"]:
             tasks += t + " "
-    print("%s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
-                             data["proxy"] if "proxy" in data else "", tasks))
+    data["tasks"] = tasks
+    data["cookies"] = "[cookie-size: " + str(len(data["cookies"]) if "cookies" in data else 0) + "]"
+
+    for field in all_fields:
+        if field not in fields:
+            data[field] = ""
+
+    print("%s %s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
+                                data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"]))
 
 
-def userdata(_username, _sources=[], _env={}):
-    global username
-    global sources
-    global data
-    username = _username
-    sources = _sources
+def restore_cookies(username, cookies):
+    sys.modules["lib.environments"]._pulled_cookies = cookies
+    # logfolder = "~/InstaPy/logs/" + username + "/"
+    # pickle.dump(cookie, open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+
+
+def userdata(username, fields, sources=[], env={}):
+    sources = copy.copy(sources)
+    fields = copy.copy(fields)
+    env = copy.copy(env)
 
     if not username:
         return None
+
+    if type(fields) is not list:
+        fields = []
+
+    if type(sources) is not list:
+        sources = []
+
+    if type(env) is not dict:
+        env = {}
+
+    if "password" in fields:
+        fields.append("instagramPassword")
 
     if "lib.environments" in sys.modules:
         # username = sys.modules["lib.environments"]._args.username
         # if "version" in sys.modules["lib.environments"]._reporter_fields:
         #    version = sys.modules["lib.environments"]._reporter_fields["version"]
-        data = get_data(username, sources, _env)
-        source = str(_sources) if _sources is not None and len(_sources) > 0 else "latest-records"
+        data = get_data(username, sources, env)
+        source = str(sources) if sources is not None and len(sources) > 0 else "latest-records"
         if "instagramUser" in data:
             _args = sys.modules["lib.environments"].args()
             print("PULL  [%d] user credentials @%s successfully pulled from server" % (int(time.time()), source))
-            print_details(data)
-            if _args.username is None:
-                _args.username = data["instagramUser"]
-            if _args.password is None:
+            print_details(data, fields)
+            # if _args.username is None:
+            #    _args.username = data["instagramUser"]
+            if "password" in fields and _args.password is None:
                 _args.password = data["instagramPassword"]
-            if _args.proxy is None and "proxy" in data:
+            if "proxy" in fields and _args.proxy is None and "proxy" in data:
                 _args.proxy = data["proxy"]
-            if _args.tasks is None and "tasks" in data:
+            if "tasks" in fields and _args.tasks is None and "tasks" in data:
                 _args.tasks = data["tasks"]
+            if "cookies" in fields and "cookies" in data:
+                # _args.cookie = data["cookie"]
+                restore_cookies(username, data["cookies"])
 
         else:
             print("PULL  [%d] no credentials @%s available from server" % (int(time.time()), source))
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("username", type=str)
     parser.add_argument("-v", "--version", nargs='?', type=str)
@@ -99,6 +122,10 @@ if __name__ == "__main__":
 
     data = get_data(username, sources, args.__dict__)
     if "instagramUser" in data:
-        print_details(data)
+        print_details(data, all_fields)
     else:
         print("no credentials available from server")
+
+
+if __name__ == "__main__":
+    main()

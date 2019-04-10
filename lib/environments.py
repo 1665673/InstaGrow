@@ -7,12 +7,14 @@ import argparse
 import json as _json
 from instapy.util import web_address_navigator
 import os
+import pickle
 from dotenv import load_dotenv, find_dotenv
 
 # reporter, arguments and patches
 from . import reporter
 from . import patch
 from . import patch2
+from . import pull
 from . import tasks
 
 #
@@ -26,7 +28,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.2"
+ENVIRONMENT_VERSION = "0.22"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -49,6 +51,7 @@ _reporter = None
 _reporter_fields = {}
 _session = None
 _tasks_dict = None
+_pulled_cookies = None
 # declaim a global logger
 logger = logging.getLogger()
 
@@ -98,7 +101,7 @@ def get_stderr():
 
 
 def get_stdout():
-    return reporter.StreamHub.stdout
+    return reporter.StreamHub.stderr
 
 
 def set_session(session):
@@ -164,13 +167,17 @@ def init_environment(**kw):
     # redirect streams to StreamHub
     stream = reporter.StreamHub()
     sys.stderr = stream
-    # sys.stdout = stream
+    stream1 = reporter.StreamHub()
+    sys.stdout = stream1
 
     # setup reporter for StreamHub
     _reporter = reporter.Reporter()
     stream.set_reporter(_reporter)
     stream.begin_report(True)
-    stream.begin_print(True)
+
+    if not _args.silent:
+        stream.begin_print(True)
+        stream1.begin_print(True)
 
     # config reporter fields
     _reporter_fields.update({
@@ -205,9 +212,12 @@ def process_arguments(**kw):
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--tasks", nargs="+", type=str)
     parser.add_argument("-p", "--pull", nargs="*", type=str)
+    parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
+    parser.add_argument("-pb", "--pull-by", nargs="+", type=str)
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", action="store_true")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
+    parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
 
     # merge named parameters **kw into command line arguments
@@ -218,10 +228,18 @@ def process_arguments(**kw):
     # see if arguments says to pull user credentials from server,
     # do it right now
     # pulled data will be merged into command line arguments
-    if _args.pull is not None:
-        from . import pull
-        pull.userdata(_args.username, _args.pull, _args.__dict__)
+    if _args.pull is not None or _args.pull_exclude is not None:
+        # adjust the fields to pull
+        if not _args.pull:
+            _args.pull = ['password', 'proxy', 'tasks', 'cookies']
+        if _args.pull_exclude:
+            for exclude in _args.pull_exclude:
+                if exclude in _args.pull:
+                    _args.pull.remove(exclude)
+        # pull these fields from sources defined by '--pull-by'
+        pull.userdata(_args.username, _args.pull, _args.pull_by, _args.__dict__)
 
+    # set a temporary username if it's currently absent
     if not _args.username:
         _args.username = "unknown-user-tba"
 
@@ -293,7 +311,8 @@ def info(*var, **kw):
 
 def log(buffer, title="LOG  ", account="messages"):
     buffer = "%s[%d] %s" % ((title + " " if title else ""), int(time.time()), buffer)
-    reporter.StreamHub.stdout.write(buffer + "\n")
+    # reporter.StreamHub.stdout.write(buffer + "\n")
+    sys.stdout.write(buffer + "\n")
     if _reporter:
         _reporter.send(buffer, account)
 
@@ -303,7 +322,7 @@ def info(buffer):
 
 
 def json(obj, account="json"):
-    reporter.StreamHub.stdout.write(account + ": " + _json.dumps(obj) + "\n")
+    sys.stdout.write(account + ": " + _json.dumps(obj) + "\n")
     if _reporter:
         _reporter.json(obj, account)
 
@@ -317,7 +336,7 @@ def data(name, value):
 
 
 def event(type, name, data={}):
-    reporter.StreamHub.stdout.write("EVENT [%d] %s %s\n" % (int(time.time()), type + "-" + name, _json.dumps(data)))
+    sys.stdout.write("EVENT [%d] %s %s\n" % (int(time.time()), type + "-" + name, _json.dumps(data)))
     obj = {
         "time": int(time.time()),
         "type": type,
@@ -334,7 +353,7 @@ def event(type, name, data={}):
 
 
 def error(type, name, data={}):
-    reporter.StreamHub.stdout.write("ERROR [%d] %s %s\n" % (int(time.time()), type + "-" + name, _json.dumps(data)))
+    sys.stdout.write("ERROR [%d] %s %s\n" % (int(time.time()), type + "-" + name, _json.dumps(data)))
     obj = {
         "time": int(time.time()),
         "type": type,
@@ -390,6 +409,7 @@ def query_latest_attributes(attributes):
 
 def report_success(session):
     set_session(session)
+    upload_cookies(session)
 
     global _login_success
     _login_success = True
@@ -409,6 +429,13 @@ def report_success(session):
         update_attributes["loginResult"] = "success-with-cookie"
 
     update(update_attributes)
+
+
+def upload_cookies(session):
+    # username = session.username
+    # logfolder = "~/InstaPy/logs/" + username + "/"
+    # cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
+    _reporter.update({"cookies": session.browser.get_cookies()})
 
 
 #
@@ -473,10 +500,19 @@ def event_handler(type, name, data):
 #
 def load_tasks(tasks_list):
     global _tasks_dict
-    _tasks_dict = tasks.load(tasks_list, task_queued, task_executing, task_finished)
-    action_queue = tasks.ActionQueue()
-    action_queue.add_from_task_dict(_tasks_dict)
-    return action_queue
+    try:
+        _tasks_dict = tasks.load_all_task_by_names(tasks_list, task_queued, task_executing, task_finished)
+        action_queue = tasks.ActionQueue()
+        add_tasks_to_queue_from_dict(action_queue, _tasks_dict)
+        return action_queue
+    except Exception as e:
+        sys.stdout.write(str(e) + "\n")
+        return None
+
+
+def add_tasks_to_queue_from_dict(action_queue, task_dict):
+    for key in task_dict:
+        action_queue.add_from_task(task_dict[key])
 
 
 set_task_status_url = SERVER + "/admin/script/{id}/tasks"
@@ -519,13 +555,13 @@ def _fetch_tasks():
 
 def fetch_tasks(action_queue):
     new_tasks = _fetch_tasks()
-    task_dict = {}
     for key in new_tasks:
-        task_dict[key] = tasks.load_task_by_definition(new_tasks[key], task_queued, task_executing, task_finished)
-    try:
-        action_queue.add_from_task_dict(task_dict)
-    except Exception as e:
-        error("TASK", "INVALID-TASKS", task_dict)
+        task_definition = new_tasks[key]
+        task = tasks.load_task_by_definition(task_definition, task_queued, task_executing, task_finished)
+        try:
+            action_queue.add_from_task(task)
+        except Exception as e:
+            error("TASK", "INVALID-TASKS", task.name if task else "unknown-task")
 
 
 def fetch_task_and_execute():

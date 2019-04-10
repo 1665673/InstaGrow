@@ -305,7 +305,11 @@ def login_user(browser,
     env.event("LOGIN", "LOADING-COOKIES")
     cookie_loaded = False
     try:
-        cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
+        if env._pulled_cookies:
+            cookies = env._pulled_cookies
+            env.info("cookies restored from server")
+        else:
+            cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
         for cookie in cookies:
             browser.add_cookie(cookie)
             cookie_loaded = True
@@ -726,6 +730,7 @@ def login_user(browser,
     super_print("[login_user] dump cookie")
     env.event("LOGIN", "DUMPING-COOKIES")
     pickle.dump(browser.get_cookies(), open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+    # print(browser.get_cookies())
     return [username, password]
 
     # # Check if user is logged-in (If there's two 'nav' elements)
