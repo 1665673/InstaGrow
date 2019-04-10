@@ -39,14 +39,14 @@ python3 run.py [IG用户] [IG密码] [代理地址:端口:用户:密码] -t 任�
 
 -p, --pull [field1] [field2] ...
 ------------------------------------------------------------------------
-脚本根据IG用户名，自动从后台获取最近登录成功过的密码，代理，cookie，任务（仅run.py支持）。
-pull后面可以加若干个field参数，表示具体需要pull哪些信息。其值可能为password，proxy，cookie，tasks。
+脚本根据IG用户名，自动从后台获取最近登录成功过的密码，代理，cookies，tasks（仅run.py支持）。
+pull后面可以加若干个field参数，表示具体需要pull哪些信息。其值可能为password，proxy，cookies，tasks。
 如果不指明具体想pull的信息，则默认为四个参数全部获取。
-如果本地已有当前IG用户的cookie，pull不会覆盖已有的cookie。
+如果本地已有当前IG用户的cookies，pull不会覆盖已有的cookies。
 【举例1】python3 like.py minhaodeng -p
-pull最近登录成功的密码，代理，cookie
-【举例2】python3 run.py minhaodeng -p password tasks cookie -ap
-pull最近登录成功的密码，代理，任务，但没说要代理。所以后面可以跟上-ap使用新代理。
+pull最近登录成功的密码、代理、cookies
+【举例2】python3 run.py minhaodeng -p password cookies tasks -ap
+pull最近登录成功的密码、cookies、tasks，但没说要代理。所以后面可以跟上-ap使用新代理。
 【举例3】python3 run.py minhaodeng 12345678 -p -t follow
 虽然pull所有信息，但其中密码"12345678"、任务"follow"已经在参数中给出，pull不会覆盖这些参数。
 
