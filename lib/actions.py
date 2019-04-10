@@ -54,8 +54,6 @@ def comment_by_location(session, target):
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
     session.comment_by_locations([target], amount=1, skip_top_posts=True)
-    # time.sleep(5)
-    session.comment_by_locations([target], amount=1, skip_top_posts=True)
 
 
 handlers = {
