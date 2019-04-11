@@ -34,8 +34,6 @@ def like_by_tag(session, target):
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
     session.like_by_tags([target], amount=1, interact=False)
-    # time.sleep(5)
-    session.like_by_tags([target], amount=1, interact=False)
 
 
 def like_by_location(session, target):
@@ -43,8 +41,6 @@ def like_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_locations([target], amount=1)
-    # time.sleep(5)
     session.like_by_locations([target], amount=1)
 
 
