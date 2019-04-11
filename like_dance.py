@@ -3,7 +3,7 @@ from instapy.util import smart_run
 import time
 import lib.environments as env
 
-env.config(version="like-ff-2.2")
+env.config(version="like-dance")
 
 SLEEP_BETWEEN_EACH_LIKE = 100
 TRACK_FOLLOWER_COUNT_GAP = 3600
