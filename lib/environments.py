@@ -637,6 +637,20 @@ def get_follower_num(session):
 
 last_track_time = 0
 
+report_follower_count_url = SERVER + "/admin/report-follower-count/{username}/{time}/{count}"
+
+
+def report_follower_count(session, count):
+    # data("followers", count)
+    username = session.username
+    current = str(int(time.time()))
+    count = str(count)
+    url = report_follower_count_url.replace("{username}", username).replace("{time}", current).replace("{count}", count)
+    try:
+        requests.get(url=url)
+    except Exception as e:
+        error("DATA ", "report-follower-count-exception", str(e))
+
 
 def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
     if not session:
@@ -647,7 +661,7 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
     if current_time > last_track_time + gap:
         last_track_time = current_time
         followers = get_follower_num(session)
-        data("followers", followers)
+        report_follower_count(session, followers)
         return followers
 
 
