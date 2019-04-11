@@ -33,7 +33,7 @@ def like_by_tag(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_tags([target], amount=1, interact=False)
+    session.like_by_tags([target], amount=2, interact=False)  # set amount = 2
 
 
 def like_by_location(session, target):
@@ -41,7 +41,7 @@ def like_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_locations([target], amount=1)
+    session.like_by_locations([target], amount=2)  # set amount = 2
 
 
 def comment_by_location(session, target):
@@ -49,7 +49,7 @@ def comment_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.comment_by_locations([target], amount=1, skip_top_posts=True)
+    session.comment_by_locations([target], amount=2, skip_top_posts=True)
 
 
 handlers = {
