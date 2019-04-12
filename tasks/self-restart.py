@@ -1,9 +1,9 @@
-name = "restart-script"
+name = "self-restart"
 title = "restart script"
 loop = False
 sub_tasks = [
     {
-        "action": "restart-script",
+        "action": "self-restart",
         # target is for arguments, e.g. ["run.py", "minhaodeng", "-p", "-t", "follow", "like"]
         # please wrap argument list inside the outer list, i.e.  "targets": [[argument-list]]
         # set it to None to restart with original arguments

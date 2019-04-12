@@ -59,6 +59,7 @@ class Action:
         if self.is_end():
             return
         try:
+            count_subtasks = len(self._task().sub_tasks)
             count_action = len(self._subtask()["targets"])
             self.index_action += 1
             # when calculating next performing time,
@@ -67,20 +68,44 @@ class Action:
             #
             if self.ready < time.time():
                 self.ready = time.time()
+            #
+            # a regular move to next action in the same sub_task
             if self.index_action < count_action:
                 self.ready += self._subtask()["cool-down"]
+            #
+            # need to move to next sub_task
             else:  # self.index_action == count_action:
-                self.ready += self._subtask()["delay-upon-completion"]
+                #
+                #   not yet the task end,
                 if not self.is_end():
+                    self.ready += self._subtask()["delay-upon-completion"]
                     self.index_action = 0
                     self.index_subtask += 1
                     self.ready += self._subtask()["delay-before-start"]
+                #
+                #   reached the task end, see if this task loops
                 else:
+                    #
+                    #   yes, loop. go ahead
                     if self._task().loop:
-                        self.index_action = 0
-                        self.index_subtask = 0
-                        self.ready += self._subtask()["delay-before-start"]
-                    # this iterator reaches the end
+                        #
+                        # task has more than 1 sub_tasks, start over from the very first one
+                        if count_subtasks > 1:
+                            self.ready += self._subtask()["delay-upon-completion"]
+                            self.index_action = 0
+                            self.index_subtask = 0
+                            self.ready += self._subtask()["delay-before-start"]
+                        # have only 1 sub_tasks, so only have to reset index_action
+                        # and need to compare if we take the cooldown or double-end delays
+                        # take the logger one
+                        else:
+                            self.index_action = 0
+                            delay1 = self._subtask()["delay-before-start"] + self._subtask()["delay-upon-completion"]
+                            cooldown = self._subtask()["cool-down"]
+                            self.ready += delay1 if delay1 > cooldown else cooldown
+                    #
+                    # this task do not loop
+                    # so this iterator reaches the end
                     else:
                         pass
         except Exception as e:

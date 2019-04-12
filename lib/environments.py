@@ -7,7 +7,8 @@ import argparse
 import json as _json
 from instapy.util import web_address_navigator
 import os
-import pickle
+# import pickle
+import subprocess
 from dotenv import load_dotenv, find_dotenv
 
 # reporter, arguments and patches
@@ -665,12 +666,19 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
         return followers
 
 
-def restart_script(session, arguments):
+def self_restart(session, arguments):
     event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
     python = sys.executable
     if not arguments:
         arguments = sys.argv
     os.execl(python, python, *arguments)
+
+
+def self_update():
+    process = subprocess.Popen(["git", "pull"], stderr=subprocess.PIPE)
+    output = process.stderr.read()
+    log("output from terminal:\n" + str(output, "utf-8"), title="GIT  ")
+    event("SCRIPT", "SELF-UPDATED")
 
 
 #

@@ -9,10 +9,15 @@ def hold_on(session, target):
     time.sleep(int(seconds))
 
 
-def restart_script(session, target):
+def self_restart(session, target):
     arguments = target
-    env.event("TASK", "RESTARTING-SCRIPT", {"arguments": arguments})
-    env.restart_script(session, arguments)
+    env.event("SCRIPT", "SELF-RESTARTING", {"arguments": arguments})
+    env.self_restart(session, arguments)
+
+
+def self_update(session, target):
+    env.event("SCRIPT", "SELF-UPDATING")
+    env.self_update()
 
 
 def follow_user(session, target):
@@ -48,12 +53,13 @@ def comment_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.comment_by_locations([target], amount=50, skip_top_posts=True) # fetch and cache 50 links at a time
+    session.comment_by_locations([target], amount=50, skip_top_posts=True)  # fetch and cache 50 links at a time
 
 
 action_handlers = {
     "hold-on": hold_on,
-    "restart-script": restart_script,
+    "self-restart": self_restart,
+    "self-update": self_update,
     "follow-user": follow_user,
     "unfollow-user": unfollow_user,
     "like-by-tag": like_by_tag,
