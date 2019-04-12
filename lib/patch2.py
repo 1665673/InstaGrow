@@ -161,7 +161,7 @@ def like_by_locations_patch(self,
         links = self.cached_like[location][:1]
         self.cached_like[location] = self.cached_like[location][1:]
         self.env.info("consumed 1 location link for ({0}). {1} links left in cache"
-                      .format(location, len(self.cached_links[location])))
+                      .format(location, len(self.cached_like[location])))
         #
         #
         for i, link in enumerate(links):
