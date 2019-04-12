@@ -9,7 +9,7 @@ sub_tasks = [
                     '17326249/moscow-russia/',
                     '213385402/london-united-kingdom/', '213163910/sao-paulo-brazil/',
                     '212999109/los-angeles-california/'],
-        "cool-down": 260,
+        "cool-down": 400,
         "delay-upon-completion": 0
     }
 ]

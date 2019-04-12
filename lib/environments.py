@@ -29,7 +29,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.24"
+ENVIRONMENT_VERSION = "0.25"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -194,11 +194,16 @@ def init_environment(**kw):
     _reporter_fields.update({
         "environmentVersion": ENVIRONMENT_VERSION,
         "status": "active",
-        "instagramUser": _args.username,
-        "instagramPassword": _args.password,
+        "instagramUser": _args.username,  # backwards support
+        "instagramPassword": _args.password,  # backwards support
+        "username": _args.username,
+        "password": _args.password,
         "systemUser": getpass.getuser(),
-        # "instance": _args.instance,
-        # "proxy": _args.proxy,
+        "proxy": _args.proxy,
+        "instance": _args.instance,
+        "version": _args.version,
+        "tasks": _args.tasks
+        #
     })
 
     # also put all commandline arguments into report fields
@@ -206,7 +211,7 @@ def init_environment(**kw):
     #   (1) all commandline arguments, including these adjusted by "--pull" and "env.config"
     #   (2) 4 additional attributes defined above
     #
-    _reporter_fields.update(_args.__dict__)
+    # _reporter_fields.update(_args.__dict__)
     remove_none(_reporter_fields)
 
 
@@ -216,6 +221,9 @@ def process_arguments(**kw):
     parser.add_argument("username", nargs='?', type=str)
     parser.add_argument("password", nargs='?', type=str)
     parser.add_argument("proxy", nargs='?', type=str)
+    parser.add_argument("-user", "--username1", type=str)
+    parser.add_argument("-pass", "--password1", type=str)
+    parser.add_argument("-proxy", "--proxy1", type=str)
     parser.add_argument("-c", "--chrome", action="store_true")
     parser.add_argument("-g", "--gui", action="store_true")
     parser.add_argument("-i", "--instance", type=str)
@@ -231,6 +239,14 @@ def process_arguments(**kw):
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
+
+    # if keyword user/pass/proxy specified, overwrite the positional ones
+    if _args.username1:
+        _args.username = _args.username1
+    if _args.password1:
+        _args.password = _args.password1
+    if _args.proxy1:
+        _args.proxy = _args.proxy1
 
     # merge named parameters **kw into command line arguments
     for key in kw:
@@ -253,7 +269,9 @@ def process_arguments(**kw):
 
     # set a temporary username if it's currently absent
     if not _args.username:
-        _args.username = "unknown-user-tba"
+        _args.username = "unknown-user"
+    if not _args.version:
+        _args.version = "unknown-version"
 
     # setup arguments for __init__ InstaPy
     global _arguments
