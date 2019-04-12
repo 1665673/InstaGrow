@@ -29,7 +29,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.23"
+ENVIRONMENT_VERSION = "0.24"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -89,7 +89,17 @@ def set_instagram_user(username):
 def checkin():
     global _reporter
     global _reporter_fields
-    _reporter.checkin(CHECKIN_URL, _reporter_fields)
+    #
+    # see if we do regular checkin, or merge with last record
+    #
+    if _args.merge is None:
+        _reporter.checkin(CHECKIN_URL, _reporter_fields)
+    else:
+        if len(_args.merge) == 0:
+            _reporter.checkin(CHECKIN_URL, {"instagramUser": _reporter_fields["instagramUser"]})
+        else:
+            _reporter.checkin(CHECKIN_URL, {"_id": _args.merge[0]})
+        _reporter.update(_reporter_fields)
 
 
 def begin_report(yes_or_no):
@@ -218,6 +228,7 @@ def process_arguments(**kw):
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", action="store_true")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
+    parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
 
