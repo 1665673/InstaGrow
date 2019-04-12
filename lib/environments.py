@@ -200,9 +200,10 @@ def init_environment(**kw):
         "password": _args.password,
         "systemUser": getpass.getuser(),
         "proxy": _args.proxy,
-        "instance": _args.instance,
+        "tasks": _args.tasks,
         "version": _args.version,
-        "tasks": _args.tasks
+        "instance": _args.instance,
+        "type": _args.type,
         #
     })
 
@@ -249,6 +250,10 @@ def process_arguments(**kw):
         _args.proxy = _args.proxy1
 
     # merge named parameters **kw into command line arguments
+    if "version" not in kw:
+        kw["version"] = "unknown-version"
+    if "type" not in kw:
+        kw["type"] = "unknown-type"
     for key in kw:
         if not hasattr(_args, key) or getattr(_args, key) is None:
             setattr(_args, key, kw[key])
@@ -270,8 +275,6 @@ def process_arguments(**kw):
     # set a temporary username if it's currently absent
     if not _args.username:
         _args.username = "unknown-user"
-    if not _args.version:
-        _args.version = "unknown-version"
 
     # setup arguments for __init__ InstaPy
     global _arguments
