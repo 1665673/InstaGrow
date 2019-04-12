@@ -118,7 +118,7 @@ def like_by_locations_patch(self,
     #   use cached links for reducing hashtag visits
     #
     #
-    if not hasattr(self, "cached"):
+    if not hasattr(self, "cached_like"):
         self.cached_like = {}
 
     for index, location in enumerate(locations):
@@ -393,7 +393,7 @@ def like_by_tags_patch(self,
     #   use cached links for reducing hashtag visits
     #
     #
-    if not hasattr(self, "cached"):
+    if not hasattr(self, "cached_like"):
         self.cached_like = {}
 
     for index, tag in enumerate(tags):
@@ -648,7 +648,7 @@ def comment_by_locations_patch(self,
     #   use cached links for reducing hashtag visits
     #
     #
-    if not hasattr(self, "cached"):
+    if not hasattr(self, "cached_comment"):
         self.cached_comment = {}
 
     for index, location in enumerate(locations):
