@@ -1,5 +1,6 @@
 import time
 import datetime
+import sys
 from . import environments as env
 
 
@@ -9,23 +10,21 @@ def hold_on(session, target):
 
 
 def restart_script(session, target):
-    message = target
-    env.event("TASK", "RESTARTING-SCRIPT", {"message": message})
-    env.restart_script(session, message)
+    arguments = target
+    env.event("TASK", "RESTARTING-SCRIPT", {"arguments": arguments})
+    env.restart_script(session, arguments)
 
 
 def follow_user(session, target):
-    session.follow_by_list([target],
-                           times=9223372036854775807,
-                           sleep_delay=1,
-                           interact=False)
+    follow_single_user = sys.modules['instapy.unfollow_util'].follow_user
+    follow_single_user(session.browser, "profile", session.username, target,
+                       None, session.blacklist, session.logger, session.logfolder)
 
 
 def unfollow_user(session, target):
-    session.unfollow_users(customList=(True, [target], "all"),
-                           style="RANDOM",
-                           unfollow_after=1,
-                           sleep_delay=1)
+    unfollow_single_user = sys.modules['instapy.unfollow_util'].unfollow_user
+    unfollow_single_user(session.browser, "profile", session.username, target,
+                         None, None, session.relationship_data, session.logger, session.logfolder)
 
 
 def like_by_tag(session, target):
@@ -33,7 +32,7 @@ def like_by_tag(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_tags([target], amount=1, interact=False)  # set amount = 2
+    session.like_by_tags([target], amount=50, interact=False)  # fetch and cache 50 links at a time
 
 
 def like_by_location(session, target):
@@ -41,7 +40,7 @@ def like_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_locations([target], amount=1)  # set amount = 2
+    session.like_by_locations([target], amount=50)  # fetch and cache 50 links at a time
 
 
 def comment_by_location(session, target):
@@ -49,10 +48,10 @@ def comment_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.comment_by_locations([target], amount=1, skip_top_posts=True)
+    session.comment_by_locations([target], amount=50, skip_top_posts=True) # fetch and cache 50 links at a time
 
 
-handlers = {
+action_handlers = {
     "hold-on": hold_on,
     "restart-script": restart_script,
     "follow-user": follow_user,
@@ -69,12 +68,26 @@ def init_comment_by_location(session):
                                    'I like your stuff'])
 
 
-inits = {
+subtask_init_handlers = {
     "init-comment-by-location": init_comment_by_location
 }
 
 
-def execute(action_init, action_type, target, ready):
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+
+
+def execute(action_type, target, ready):
     current = time.time()
     if current < ready:
         delay = ready - current
@@ -83,11 +96,22 @@ def execute(action_init, action_type, target, ready):
 
     env.log("now performing task (%s, %s)" % (action_type, target), title="TASK ")
     session = env.get_session()
-
     try:
-        if action_init:
-            inits[action_init](session)
-        return handlers[action_type](session, target)
+        return action_handlers[action_type](session, target)
     except Exception as e:
+        if not e:
+            e = "action-handler-error"
         env.error(action_type, "exception", str(e))
         return None
+
+
+def init_subtask(handler):
+    session = env.get_session()
+    if not handler:
+        return
+    try:
+        subtask_init_handlers[handler](session)
+    except Exception as e:
+        if not e:
+            e = "subtask-init-error"
+        env.error(handler, "exception", str(e))

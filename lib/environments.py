@@ -28,7 +28,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.22"
+ENVIRONMENT_VERSION = "0.23"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -665,10 +665,12 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
         return followers
 
 
-def restart_script(session, message):
+def restart_script(session, arguments):
     event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
     python = sys.executable
-    os.execl(python, python, *sys.argv)
+    if not arguments:
+        arguments = sys.argv
+    os.execl(python, python, *arguments)
 
 
 #

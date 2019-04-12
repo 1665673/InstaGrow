@@ -40,9 +40,9 @@ while preserving it's relative ordering.
 
 
 class Action:
-    def __init__(self, task, index_sub_task=0, index_action=0, ready=time.time()):
+    def __init__(self, task, index_subtask=0, index_action=0, ready=time.time()):
         self.task = task
-        self.index_sub_task = index_sub_task
+        self.index_subtask = index_subtask
         self.index_action = index_action
         self.ready = ready
 
@@ -52,14 +52,14 @@ class Action:
     def _task(self):
         return self.task
 
-    def _actions(self):
-        return self.task.sub_tasks[self.index_sub_task]
+    def _subtask(self):
+        return self.task.sub_tasks[self.index_subtask]
 
     def next(self):
         if self.is_end():
             return
         try:
-            count_action = len(self._actions()["targets"])
+            count_action = len(self._subtask()["targets"])
             self.index_action += 1
             # when calculating next performing time,
             # make sure current self.ready is at least @ current time time.time()
@@ -68,18 +68,18 @@ class Action:
             if self.ready < time.time():
                 self.ready = time.time()
             if self.index_action < count_action:
-                self.ready += self._actions()["cool-down"]
+                self.ready += self._subtask()["cool-down"]
             else:  # self.index_action == count_action:
-                self.ready += self._actions()["delay-upon-completion"]
+                self.ready += self._subtask()["delay-upon-completion"]
                 if not self.is_end():
                     self.index_action = 0
-                    self.index_sub_task += 1
-                    self.ready += self._actions()["delay-before-start"]
+                    self.index_subtask += 1
+                    self.ready += self._subtask()["delay-before-start"]
                 else:
                     if self._task().loop:
                         self.index_action = 0
-                        self.index_sub_task = 0
-                        self.ready += self._actions()["delay-before-start"]
+                        self.index_subtask = 0
+                        self.ready += self._subtask()["delay-before-start"]
                     # this iterator reaches the end
                     else:
                         pass
@@ -91,25 +91,35 @@ class Action:
         _next.next()
         return _next
 
+    def is_begin(self):
+        return self.index_subtask == 0 and self.index_action == 0
+
     def is_end(self):
         end = self.task.end()
         if not end:
             return True
-        return self.index_sub_task == end.index_sub_task and self.index_action == end.index_action
+        return self.index_subtask == end.index_subtask and self.index_action == end.index_action
 
     def execute(self):
         if self.is_end():
             return None
         try:
-            actions = self._actions()
+            actions = self._subtask()
             action_init = actions["init"]
             action_type = actions["action"]
             target = actions["targets"][self.index_action]
 
+            # if it's the first action in sub_task
+            if self.is_begin():
+                handlers.init_subtask(action_init)
+
+            # execute it
             self.task.executing(action_type, target)
-            result = handlers.execute(action_init, action_type, target, self.ready)
+            result = handlers.execute(action_type, target, self.ready)
+
             return result
         except Exception as e:
+            print(str(e))
             return None
 
 

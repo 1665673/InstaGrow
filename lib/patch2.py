@@ -3,24 +3,38 @@ from . import environments as env
 
 
 def apply():
+    sys.modules['instapy'].InstaPy.unfollow_users.__code__ = unfollow_users_patch.__code__
     sys.modules['instapy'].InstaPy.like_by_locations.__code__ = like_by_locations_patch.__code__
     sys.modules['instapy'].InstaPy.like_by_tags.__code__ = like_by_tags_patch.__code__
     sys.modules['instapy'].InstaPy.comment_by_locations.__code__ = comment_by_locations_patch.__code__
-    sys.modules['instapy'].InstaPy.unfollow_users.__code__ = unfollow_users.__code__
-    # sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
-    # sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
+
+    sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
+    sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
+    sys.modules['instapy.unfollow_util'].get_following_status.__code__ = get_following_status_patch.__code__
+    sys.modules['instapy.unfollow_util'].verify_action.__code__ = verify_action_patch.__code__
+    sys.modules['instapy.unfollow_util'].confirm_unfollow.__code__ = confirm_unfollow_patch.__code__
 
 
-def unfollow_users(self,
-                   amount=10,
-                   customList=(False, [], "all"),
-                   InstapyFollowed=(False, "all"),
-                   nonFollowers=False,
-                   allFollowing=False,
-                   style="FIFO",
-                   unfollow_after=None,
-                   delay_followbackers=0,  # 864000 = 10 days, 0 = don't delay
-                   sleep_delay=600):
+#
+#
+#
+#
+#   patches for
+#   sys.modules['instapy'].InstaPy
+#
+#
+#
+#
+def unfollow_users_patch(self,
+                         amount=10,
+                         customList=(False, [], "all"),
+                         InstapyFollowed=(False, "all"),
+                         nonFollowers=False,
+                         allFollowing=False,
+                         style="FIFO",
+                         unfollow_after=None,
+                         delay_followbackers=0,  # 864000 = 10 days, 0 = don't delay
+                         sleep_delay=600):
     """Unfollows (default) 10 users from your following list"""
 
     if self.aborting:
@@ -79,196 +93,6 @@ def unfollow_users(self,
     return self
 
 
-def follow_user_patch(browser, track, login, user_name, button, blacklist, logger,
-                      logfolder):
-    """ Follow a user either from the profile page or post page or dialog
-    box """
-    # list of available tracks to follow in: ["profile", "post" "dialog"]
-
-    # check action availability
-    if quota_supervisor("follows") == "jump":
-        return False, "jumped"
-
-    if track in ["profile", "post"]:
-        if track == "profile":
-            # check URL of the webpage, if it already is user's profile
-            # page, then do not navigate to it again
-            user_link = "https://www.instagram.com/{}/".format(user_name)
-            web_address_navigator(browser, user_link)
-
-        # find out CURRENT following status
-        following_status, follow_button = get_following_status(browser,
-                                                               track,
-                                                               login,
-                                                               user_name,
-                                                               None,
-                                                               logger,
-                                                               logfolder)
-        if following_status in ["Follow", "Follow Back"]:
-            click_visibly(browser, follow_button)  # click to follow
-            follow_state, msg = verify_action(browser, "follow", track, login,
-                                              user_name, None, logger,
-                                              logfolder)
-            if follow_state is not True:
-                logger.warning("!!!!!Retrying!!!!!!!")
-                return self.follow_user_patch(browser, track, login, user_name, button, blacklist, logger, logfolder)
-
-        elif following_status in ["Following", "Requested"]:
-            if following_status == "Following":
-                logger.info("--> Already following '{}'!\n".format(user_name))
-
-            elif following_status == "Requested":
-                logger.info("--> Already requested '{}' to follow!\n".format(
-                    user_name))
-
-            sleep(1)
-            return False, "already followed"
-
-        elif following_status in ["Unblock", "UNAVAILABLE"]:
-            if following_status == "Unblock":
-                failure_msg = "user is in block"
-
-            elif following_status == "UNAVAILABLE":
-                failure_msg = "user is inaccessible"
-
-            logger.warning(
-                "--> Couldn't follow '{}'!\t~{}".format(user_name,
-                                                        failure_msg))
-            return False, following_status
-
-        elif following_status is None:
-            sirens_wailing, emergency_state = emergency_exit(browser, login,
-                                                             logger)
-            if sirens_wailing is True:
-                return False, emergency_state
-
-            else:
-                logger.warning(
-                    "--> Couldn't unfollow '{}'!\t~unexpected failure".format(
-                        user_name))
-                return False, "unexpected failure"
-    elif track == "dialog":
-        click_element(browser, button)
-        sleep(3)
-
-    # general tasks after a successful follow
-    logger.info("--> Followed '{}'!".format(user_name.encode("utf-8")))
-    update_activity('follows')
-
-    # get user ID to record alongside username
-    user_id = get_user_id(browser, track, user_name, logger)
-
-    logtime = datetime.now().strftime('%Y-%m-%d %H:%M')
-    log_followed_pool(login, user_name, logger, logfolder, logtime, user_id)
-
-    follow_restriction("write", user_name, None, logger)
-
-    if blacklist['enabled'] is True:
-        action = 'followed'
-        add_user_to_blacklist(user_name,
-                              blacklist['campaign'],
-                              action,
-                              logger,
-                              logfolder)
-
-    # get the post-follow delay time to sleep
-    naply = get_action_delay("follow")
-    sleep(naply)
-
-    return True, "success"
-
-
-def unfollow_user_patch(browser, track, username, person, person_id, button,
-                        relationship_data, logger, logfolder):
-    """ Unfollow a user either from the profile or post page or dialog box """
-    # list of available tracks to unfollow in: ["profile", "post" "dialog"]
-
-    # check action availability
-    if quota_supervisor("unfollows") == "jump":
-        return False, "jumped"
-
-    if track in ["profile", "post"]:
-        """ Method of unfollowing from a user's profile page or post page """
-        if track == "profile":
-            user_link = "https://www.instagram.com/{}/".format(person)
-            web_address_navigator(browser, user_link)
-
-        # find out CURRENT follow status
-        following_status, follow_button = get_following_status(browser,
-                                                               track,
-                                                               username,
-                                                               person,
-                                                               person_id,
-                                                               logger,
-                                                               logfolder)
-
-        if following_status in ["Following", "Requested"]:
-            click_element(browser, follow_button)  # click to unfollow
-            sleep(4)  # TODO: use explicit wait here
-            confirm_unfollow(browser)
-            unfollow_state, msg = verify_action(browser, "unfollow", track,
-                                                username,
-                                                person, person_id, logger,
-                                                logfolder)
-            if unfollow_state is not True:
-                logger.warning("!!!!!!!!!!!!!!!!!!!!retrying!")
-                return self.unfollow_user_patch(browser, track, username, person, person_id, button,
-                                                relationship_data, logger, logfolder)
-
-        elif following_status in ["Follow", "Follow Back"]:
-            logger.info(
-                "--> Already unfollowed '{}'! or a private user that "
-                "rejected your req".format(
-                    person))
-            post_unfollow_cleanup(["successful", "uncertain"], username,
-                                  person, relationship_data, person_id, logger,
-                                  logfolder)
-            return False, "already unfollowed"
-
-        elif following_status in ["Unblock", "UNAVAILABLE"]:
-            if following_status == "Unblock":
-                failure_msg = "user is in block"
-
-            elif following_status == "UNAVAILABLE":
-                failure_msg = "user is inaccessible"
-
-            logger.warning(
-                "--> Couldn't unfollow '{}'!\t~{}".format(person, failure_msg))
-            post_unfollow_cleanup("uncertain", username, person,
-                                  relationship_data, person_id, logger,
-                                  logfolder)
-            return False, following_status
-
-        elif following_status is None:
-            sirens_wailing, emergency_state = emergency_exit(browser, username,
-                                                             logger)
-            if sirens_wailing is True:
-                return False, emergency_state
-
-            else:
-                logger.warning(
-                    "--> Couldn't unfollow '{}'!\t~unexpected failure".format(
-                        person))
-                return False, "unexpected failure"
-    elif track == "dialog":
-        """  Method of unfollowing from a dialog box """
-        click_element(browser, button)
-        sleep(4)  # TODO: use explicit wait here
-        confirm_unfollow(browser)
-
-    # general tasks after a successful unfollow
-    logger.info("--> Unfollowed '{}'!".format(person))
-    update_activity('unfollows')
-    post_unfollow_cleanup("successful", username, person, relationship_data,
-                          person_id, logger, logfolder)
-
-    # get the post-unfollow delay time to sleep
-    naply = get_action_delay("unfollow")
-    sleep(naply)
-
-    return True, "success"
-
-
 def like_by_locations_patch(self,
                             locations=None,
                             amount=50,
@@ -288,6 +112,15 @@ def like_by_locations_patch(self,
     locations = locations or []
     self.quotient_breach = False
 
+    #
+    #
+    #   patch
+    #   use cached links for reducing hashtag visits
+    #
+    #
+    if not hasattr(self, "cached"):
+        self.cached_like = {}
+
     for index, location in enumerate(locations):
         if self.quotient_breach:
             break
@@ -296,19 +129,23 @@ def like_by_locations_patch(self,
         self.logger.info('--> {}'.format(location.encode('utf-8')))
 
         #
+        #
         #   patch
-        #   retrieve 2 links
+        #   refill cached links if out of stock
         #
         #
         try:
-            links = get_links_for_location(self.browser,
-                                           location,
-                                           50,  # amount was set to 2
-                                           self.logger,
-                                           media,
-                                           skip_top_posts)
-            random.shuffle(links)
-            links = links[:amount]  # 2 links
+            if location not in self.cached_like or len(self.cached_like[location]) == 0:
+                self.env.info("no cached links available for ({0}). fetching {1} links from hashtag..."
+                              .format(location, amount))
+                cache = get_links_for_location(self.browser,
+                                               location,
+                                               amount,  # amount was set to 2
+                                               self.logger,
+                                               media,
+                                               skip_top_posts)
+                random.shuffle(cache)
+                self.cached_like[location] = cache
 
         except NoSuchElementException as exc:
             self.logger.warning(
@@ -317,6 +154,16 @@ def like_by_locations_patch(self,
                     exc).encode("utf-8")))
             continue
 
+        #
+        #   patch
+        #   fetch one link from cache
+        #
+        links = self.cached_like[location][:1]
+        self.cached_like[location] = self.cached_like[location][1:]
+        self.env.info("consumed 1 location link for ({0}). {1} links left in cache"
+                      .format(location, len(self.cached_links[location])))
+        #
+        #
         for i, link in enumerate(links):
             if self.jumps["consequent"]["likes"] >= self.jumps["limit"][
                 "likes"]:
@@ -540,27 +387,54 @@ def like_by_tags_patch(self,
     tags = tags or []
     self.quotient_breach = False
 
+    #
+    #
+    #   patch
+    #   use cached links for reducing hashtag visits
+    #
+    #
+    if not hasattr(self, "cached"):
+        self.cached_like = {}
+
     for index, tag in enumerate(tags):
         if self.quotient_breach:
             break
 
-        # self.logger.info('Tag [{}/{}]'.format(index + 1, len(tags)))
-        self.logger.info('--> {}'.format(tag.encode('utf-8')))
-
         try:
-            links = get_links_for_tag(self.browser,
-                                      tag,
-                                      50,
-                                      skip_top_posts,
-                                      randomize,
-                                      media,
-                                      self.logger)
-            random.shuffle(links)
-            links = links[:amount]  # 2 links
+            #
+            #   patch
+            #   refill cached links if out of stock
+            #
+            #
+            if tag not in self.cached_like or len(self.cached_like[tag]) == 0:
+                self.env.info("no cached links available for ({0}). fetching {1} links from hashtag..."
+                              .format(tag, amount))
+                cache = get_links_for_tag(self.browser,
+                                          tag,
+                                          amount,
+                                          skip_top_posts,
+                                          randomize,
+                                          media,
+                                          self.logger)
+                random.shuffle(cache)
+                self.cached_like[tag] = cache
 
         except NoSuchElementException:
             self.logger.info('Too few images, skipping this tag')
             continue
+
+        #
+        #   patch
+        #   fetch one tag from cache
+        #
+        links = self.cached_like[tag][:1]
+        self.cached_like[tag] = self.cached_like[tag][1:]
+        self.env.info("consumed 1 tag link for ({0}). {1} links left in cache"
+                      .format(tag, len(self.cached_like[tag])))
+        #
+        #
+        # self.logger.info('Tag [{}/{}]'.format(index + 1, len(tags)))
+        self.logger.info('--> {}'.format(tag.encode('utf-8')))
 
         for i, link in enumerate(links):
             if self.jumps["consequent"]["likes"] >= self.jumps["limit"][
@@ -768,6 +642,15 @@ def comment_by_locations_patch(self,
     locations = locations or []
     self.quotient_breach = False
 
+    #
+    #
+    #   patch
+    #   use cached links for reducing hashtag visits
+    #
+    #
+    if not hasattr(self, "cached"):
+        self.cached_comment = {}
+
     for index, location in enumerate(locations):
         if self.quotient_breach:
             break
@@ -776,20 +659,39 @@ def comment_by_locations_patch(self,
         self.logger.info('--> {}'.format(location.encode('utf-8')))
 
         try:
-            links = get_links_for_location(self.browser,
-                                           location,
-                                           50,
-                                           self.logger,
-                                           media,
-                                           skip_top_posts)
             #
-            random.shuffle(links)
-            links = links[:amount]
+            #   patch
+            #   refill cached links if out of stock
             #
+            #
+            if location not in self.cached_comment or len(self.cached_comment[location]) == 0:
+                self.env.info("no cached links available for ({0}). fetching {1} links from hashtag..."
+                              .format(location, amount))
+                cached = get_links_for_location(self.browser,
+                                                location,
+                                                amount,
+                                                self.logger,
+                                                media,
+                                                skip_top_posts)
+                #
+                random.shuffle(cached)
+                self.cached_comment[location] = cached
+                #
 
         except NoSuchElementException:
             self.logger.warning('Too few images, skipping this location')
             continue
+
+        #
+        #   patch
+        #   fetch one link from cache
+        #
+        links = self.cached_comment[location][:1]
+        self.cached_comment[location] = self.cached_comment[location][1:]
+        self.env.info("consumed 1 location link for ({0}). {1} links left in cache"
+                      .format(location, len(self.cached_comment[location])))
+        #
+        #
 
         for i, link in enumerate(links):
             if self.jumps["consequent"]["comments"] >= self.jumps["limit"][
@@ -945,3 +847,498 @@ def comment_by_locations_patch(self,
     self.not_valid_users += not_valid_users
 
     return self
+
+
+#
+#
+#
+#
+#
+#
+#   patches for
+#   sys.modules['instapy.unfollow_util']
+#
+#
+#
+#
+#
+#
+#
+
+def follow_user_patch(browser, track, login, user_name, button, blacklist, logger, logfolder):
+    # go to user's main profile page
+    user_link = "https://www.instagram.com/{}/".format(user_name)
+    web_address_navigator(browser, user_link)
+    # stay 1 second in profile page
+    sleep(1)
+    #
+    #   patch
+    #   the follow action is now included inside verify_action()
+    #   so, simply call it and see what happens
+    #
+    follow_state, msg = verify_action(browser, "follow", track, login,
+                                      user_name, None, logger,
+                                      logfolder)
+    if follow_state:
+        if msg == "success":
+            logger.info("Successfully followed '{}'!".format(user_name.encode("utf-8")))
+        else:
+            logger.info("Already following '{}'!".format(user_name))
+    else:
+        logger.info("Action (follow, {}) failed.".format(user_name))
+
+    return follow_state, msg
+
+    # """ Follow a user either from the profile page or post page or dialog
+    # box """
+    # # list of available tracks to follow in: ["profile", "post" "dialog"]
+    #
+    # # check action availability
+    # # if quota_supervisor("follows") == "jump":
+    # #     return False, "jumped"
+    #
+    # if track in ["profile", "post"]:
+    #     if track == "profile":
+    #         # check URL of the webpage, if it already is user's profile
+    #         # page, then do not navigate to it again
+    #         user_link = "https://www.instagram.com/{}/".format(user_name)
+    #         web_address_navigator(browser, user_link)
+    #
+    #     # find out CURRENT following status
+    #     following_status, follow_button = get_following_status(browser,
+    #                                                            track,
+    #                                                            login,
+    #                                                            user_name,
+    #                                                            None,
+    #                                                            logger,
+    #                                                            logfolder)
+    #     if following_status in ["Follow", "Follow Back"]:
+    #         #
+    #         #
+    #         #   patch
+    #         #   logic refined:
+    #         #
+    #         #   do not perform follow/unfollow here,
+    #         #   function verify_action() will use a loop to do both performing and verifying
+    #         #
+    #         #
+    #         # click_visibly(browser, follow_button)  # click to follow
+    #         # sleep(2)
+    #         follow_state, msg = verify_action(browser, "follow", track, login,
+    #                                           user_name, None, logger,
+    #                                           logfolder)
+    #         if follow_state is not True:
+    #             return False, msg
+    #
+    #     elif following_status in ["Following", "Requested"]:
+    #         if following_status == "Following":
+    #             logger.info("--> Already following '{}'!\n".format(user_name))
+    #
+    #         elif following_status == "Requested":
+    #             logger.info("--> Already requested '{}' to follow!\n".format(
+    #                 user_name))
+    #
+    #         # sleep(1)
+    #         return False, "already followed"
+    #
+    #     elif following_status in ["Unblock", "UNAVAILABLE"]:
+    #         if following_status == "Unblock":
+    #             failure_msg = "user is in block"
+    #
+    #         elif following_status == "UNAVAILABLE":
+    #             failure_msg = "user is inaccessible"
+    #
+    #         logger.warning(
+    #             "--> Couldn't follow '{}'!\t~{}".format(user_name,
+    #                                                     failure_msg))
+    #         return False, following_status
+    #
+    #     elif following_status is None:
+    #         sirens_wailing, emergency_state = emergency_exit(browser, login,
+    #                                                          logger)
+    #         if sirens_wailing is True:
+    #             return False, emergency_state
+    #
+    #         else:
+    #             logger.warning(
+    #                 "--> Couldn't unfollow '{}'!\t~unexpected failure".format(
+    #                     user_name))
+    #             return False, "unexpected failure"
+    # # elif track == "dialog":
+    # #     click_element(browser, button)
+    # #     sleep(3)
+    #
+    # # general tasks after a successful follow
+    # logger.info("--> Followed '{}'!".format(user_name.encode("utf-8")))
+    # update_activity('follows')
+    #
+    # # # get user ID to record alongside username
+    # # user_id = get_user_id(browser, track, user_name, logger)
+    # #
+    # # logtime = datetime.now().strftime('%Y-%m-%d %H:%M')
+    # # log_followed_pool(login, user_name, logger, logfolder, logtime, user_id)
+    # #
+    # # follow_restriction("write", user_name, None, logger)
+    # #
+    # # if blacklist['enabled'] is True:
+    # #     action = 'followed'
+    # #     add_user_to_blacklist(user_name,
+    # #                           blacklist['campaign'],
+    # #                           action,
+    # #                           logger,
+    # #                           logfolder)
+    # #
+    # # # get the post-follow delay time to sleep
+    # # naply = get_action_delay("follow")
+    # # sleep(naply)
+    #
+    # return True, "success"
+
+
+def unfollow_user_patch(browser, track, username, person, person_id, button, relationship_data, logger, logfolder):
+    # go to user's main profile page
+    user_link = "https://www.instagram.com/{}/".format(person)
+    web_address_navigator(browser, user_link)
+    # stay 1 second in profile page
+    sleep(1)
+    #
+    #   patch
+    #   the follow action is now included inside verify_action()
+    #   so, simply call it and see what happens
+    #
+    follow_state, msg = verify_action(browser, "unfollow", track, username,
+                                      person, None, logger,
+                                      logfolder)
+    if follow_state:
+        if msg == "success":
+            logger.info("Successfully un-followed '{}'!".format(person.encode("utf-8")))
+        else:
+            logger.info("Already un-following '{}'!".format(person))
+    else:
+        logger.info("Action (un-follow, {}) failed.".format(person))
+
+    return follow_state, msg
+
+    # """ Unfollow a user either from the profile or post page or dialog box """
+    # # list of available tracks to unfollow in: ["profile", "post" "dialog"]
+    #
+    # # check action availability
+    # # if quota_supervisor("unfollows") == "jump":
+    # #     return False, "jumped"
+    #
+    # if track in ["profile", "post"]:
+    #     """ Method of unfollowing from a user's profile page or post page """
+    #     if track == "profile":
+    #         user_link = "https://www.instagram.com/{}/".format(person)
+    #         web_address_navigator(browser, user_link)
+    #
+    #     # find out CURRENT follow status
+    #     following_status, follow_button = get_following_status(browser,
+    #                                                            track,
+    #                                                            username,
+    #                                                            person,
+    #                                                            person_id,
+    #                                                            logger,
+    #                                                            logfolder)
+    #
+    #     if following_status in ["Following", "Requested"]:
+    #         #
+    #         #
+    #         #   patch
+    #         #   logic refined:
+    #         #
+    #         #   do not perform follow/unfollow here,
+    #         #   function verify_action() will use a loop to do both performing and verifying
+    #         #
+    #         #
+    #         # click_visibly(browser, follow_button)  # click to unfollow
+    #         # sleep(4)  # TODO: use explicit wait here
+    #         # confirm_unfollow(browser, logger)
+    #         #
+    #         #
+    #         unfollow_state, msg = verify_action(browser, "unfollow", track,
+    #                                             username,
+    #                                             person, person_id, logger,
+    #                                             logfolder)
+    #         if unfollow_state is not True:
+    #             return False, msg
+    #
+    #     elif following_status in ["Follow", "Follow Back"]:
+    #         logger.info(
+    #             "--> Already unfollowed '{}'! or a private user that "
+    #             "rejected your req".format(
+    #                 person))
+    #         # post_unfollow_cleanup(["successful", "uncertain"], username,
+    #         #                       person, relationship_data, person_id, logger,
+    #         #                       logfolder)
+    #         return False, "already unfollowed"
+    #
+    #     elif following_status in ["Unblock", "UNAVAILABLE"]:
+    #         if following_status == "Unblock":
+    #             failure_msg = "user is in block"
+    #
+    #         elif following_status == "UNAVAILABLE":
+    #             failure_msg = "user is inaccessible"
+    #
+    #         logger.warning("--> Couldn't unfollow '{}'!\t~{}".format(person, failure_msg))
+    #         # post_unfollow_cleanup("uncertain", username, person,
+    #         #                       relationship_data, person_id, logger,
+    #         #                       logfolder)
+    #         return False, following_status
+    #
+    #     elif following_status is None:
+    #         #
+    #         #   patch
+    #         #   never exit
+    #         #
+    #         # sirens_wailing, emergency_state = emergency_exit(browser, username, logger)
+    #
+    #         if sirens_wailing is True:
+    #             return False, emergency_state
+    #
+    #         else:
+    #             logger.warning("--> Couldn't unfollow '{}'!\t~unexpected failure".format(person))
+    #             return False, "unexpected failure"
+    # # elif track == "dialog":
+    # #     """  Method of unfollowing from a dialog box """
+    # #     click_element(browser, button)
+    # #     sleep(4)  # TODO: use explicit wait here
+    # #     confirm_unfollow(browser)
+    #
+    # # general tasks after a successful unfollow
+    # logger.info("--> Unfollowed '{}'!".format(person))
+    # update_activity('unfollows')
+    # post_unfollow_cleanup("successful", username, person, relationship_data,
+    #                       person_id, logger, logfolder)
+    #
+    # # get the post-unfollow delay time to sleep
+    # # naply = get_action_delay("unfollow")
+    # # sleep(naply)
+    #
+    # return True, "success"
+
+
+def get_following_status_patch(browser, track, username, person, person_id, logger,
+                               logfolder):
+    """ Verify if you are following the user in the loaded page """
+    # print("get_following_status_patch")
+
+    if person == username:
+        return "OWNER", None
+
+    # if track == "profile":
+    #     ig_homepage = "https://www.instagram.com/"
+    #     web_address_navigator(browser, ig_homepage + person)
+
+    follow_button_XP = ("//button[text()='Following' or \
+                                  text()='Requested' or \
+                                  text()='Follow' or \
+                                  text()='Follow Back' or \
+                                  text()='Unblock']"
+                        )
+    failure_msg = "--> Unable to detect the following status of '{}'!"
+    user_inaccessible_msg = (
+        "Couldn't access the profile page of '{}'!\t~might have changed the"
+        " username".format(person))
+
+    # check if the page is available
+    valid_page = is_page_available(browser, logger)
+    if not valid_page:
+        return "UNAVAILABLE", None
+        # logger.warning(user_inaccessible_msg)
+        # person_new = verify_username_by_id(browser,
+        #                                    username,
+        #                                    person,
+        #                                    None,
+        #                                    logger,
+        #                                    logfolder)
+        # if person_new:
+        #     web_address_navigator(browser, ig_homepage + person_new)
+        #     valid_page = is_page_available(browser, logger)
+        #     if not valid_page:
+        #         logger.error(failure_msg.format(person_new.encode("utf-8")))
+        #         return "UNAVAILABLE", None
+        #
+        # else:
+        #     logger.error(failure_msg.format(person.encode("utf-8")))
+        #     return "UNAVAILABLE", None
+
+    # wait until the follow button is located and visible, then get it
+    follow_button = explicit_wait(browser, "VOEL", [follow_button_XP, "XPath"],
+                                  logger, 7, False)
+    if not follow_button:
+        browser.execute_script("location.reload()")
+        update_activity()
+
+        follow_button = explicit_wait(browser, "VOEL",
+                                      [follow_button_XP, "XPath"], logger, 14,
+                                      False)
+        if not follow_button:
+            # cannot find the any of the expected buttons
+            logger.error(failure_msg.format(person.encode("utf-8")))
+            return None, None
+
+    # get follow status
+    following_status = follow_button.text
+
+    return following_status, follow_button
+
+
+def verify_action_patch(browser, action, track, username, person, person_id, logger,
+                        logfolder):
+    # print("verify_action_patch")
+    #
+    #
+    #
+    #   patch
+    #   this function now includes the logic for performing the action itself,
+    #   i.e.
+    #   it's:  (1) doing an action(follow/unfollow), then verify it
+    #          (2) if failed, retry it up to 3 times (4 loop runs including the initial status check)
+    #
+    #
+    #
+    #
+    #
+
+    """ Verify if the action has succeeded """
+    # currently supported actions are follow & unfollow
+
+    if action in ["follow", "unfollow"]:
+
+        # assuming button_change testing is relevant to those actions only
+        button_change = False
+
+        if action == "follow":
+            post_action_text_correct = ["Following", "Requested"]
+            post_action_text_fail = ["Follow", "Follow Back", "Unblock"]
+
+        elif action == "unfollow":
+            post_action_text_correct = ["Follow", "Follow Back", "Unblock"]
+            post_action_text_fail = ["Following", "Requested"]
+
+        attempt_count = 0
+        while True:
+            #
+            #
+            #   patch
+            #   refined logic
+            #
+            #
+            if attempt_count > 3:
+                logger.warning("Phew! action ({0}, {1}) is not verified.".format(action, username))
+                return False, "temporary block"
+
+            #
+            #   patch
+            #   refined logic
+            #
+
+            # for initial follow/unfollow status check, let it pass
+            if attempt_count == 0:
+                pass
+            # for the first action attempt, wait 3 seconds for results
+            elif attempt_count == 1:
+                sleep(3)
+            # for additional attempts, which means we failed the first 1,
+            # do reload_page for a more prudent procedure
+            else:
+                reload_webpage(browser)
+                explicit_wait(browser, "PFL", [], logger, 5)
+
+            # find out CURRENT follow status (this is safe as the follow button is before others)
+            following_status, follow_button = get_following_status(browser,
+                                                                   track,
+                                                                   username,
+                                                                   person,
+                                                                   person_id,
+                                                                   logger,
+                                                                   logfolder)
+            if following_status in post_action_text_correct:
+                verified = True
+            elif following_status in post_action_text_fail:
+                verified = False
+            else:
+                logger.error("Hey! Action {} is not verified out of an unexpected failure!".format(action))
+                return False, "unexpected"
+
+            #
+            #   a True value of button_change indicates a verified action
+            #   if verified, break the loop
+            #
+            if verified:
+                break
+
+            #
+            #   if we get to here, then action is not verified,
+            #   perform it or try it one more time
+            #
+            click_visibly(browser, follow_button)
+            if action == "unfollow":
+                confirm_unfollow(browser, logger)
+
+            # increase retry-count
+            attempt_count += 1
+
+            # elif retry_count == 3:
+            #     logger.warning("Phew! Last {0} is not verified."
+            #                    "\t~'{1}' might be temporarily blocked "
+            #                    "from {0}ing\n"
+            #                    .format(action, username))
+            #     sleep(210)
+            #     return False, "temporary block"
+
+        #
+        #
+        #
+        # if retry_count <= 3:
+        #     logger.info("Last {} is verified after reloading the page!".format(action))
+
+    if attempt_count == 0:
+        return True, "no-change"
+    else:
+        return True, "success"
+
+
+def confirm_unfollow_patch(browser, logger):
+    """ Deal with the confirmation dialog boxes during an unfollow """
+
+    #
+    #   patch
+    #   use an explicit wait to locate "confirm unfollow" button
+    #   if it shows up, click it,
+    #   if it doesn't, that's it, simply quit. no need to try, it just won't work
+    #
+    button_selector = "//button[text()='Unfollow']"
+    try:
+        button = explicit_wait(browser, "VOEL", [button_selector, "XPath"], logger, 15, False)
+        #
+        #   wait a bit before clicking
+        #
+        sleep(1)
+        click_element(browser, button)
+    except Exception as e:
+        pass
+
+    # attempt = 0
+    #
+    # while attempt < 3:
+    #     try:
+    #         attempt += 1
+    #         button_xp = "//button[text()='Unfollow']"  # "//button[contains(
+    #         # text(), 'Unfollow')]"
+    #         unfollow_button = browser.find_element_by_xpath(button_xp)
+    #
+    #         if unfollow_button.is_displayed():
+    #             click_element(browser, unfollow_button)
+    #             sleep(2)
+    #             break
+    #
+    #     except (ElementNotVisibleException, NoSuchElementException) as exc:
+    #         # prob confirm dialog didn't pop up
+    #         if isinstance(exc, ElementNotVisibleException):
+    #             break
+    #
+    #         elif isinstance(exc, NoSuchElementException):
+    #             sleep(1)
+    #             pass
