@@ -869,7 +869,7 @@ def comment_by_locations_patch(self,
 #
 #
 #
-def check_link(browser, post_link, dont_like, mandatory_words,
+def check_link_patch(browser, post_link, dont_like, mandatory_words,
                mandatory_language, mandatory_character,
                is_mandatory_character, check_character_set, ignore_if_contains,
                logger):
