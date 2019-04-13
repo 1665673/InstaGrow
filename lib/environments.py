@@ -29,7 +29,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.25"
+ENVIRONMENT_VERSION = "0.26"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -53,6 +53,7 @@ _reporter_fields = {}
 _session = None
 _tasks_dict = None
 _pulled_cookies = None
+_action_statistics = {}
 # declaim a global logger
 logger = logging.getLogger()
 

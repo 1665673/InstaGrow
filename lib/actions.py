@@ -4,6 +4,36 @@ import sys
 from . import environments as env
 
 
+def register_handlers():
+    return {
+        #
+        #   actions
+        #
+        "hold-on": hold_on,
+        "self-restart": self_restart,
+        "self-update": self_update,
+        "follow-user": follow_user,
+        "unfollow-user": unfollow_user,
+        "like-by-tag": like_by_tag,
+        "like-by-location": like_by_location,
+        "comment-by-location": comment_by_location,
+
+        #
+        #   sub-task initializers
+        #
+        "init-comment-by-location": init_comment_by_location
+    }
+
+
+#
+#
+#   for all action handlers:
+#       (1) if it returns a value, it has to be a boolean value indicating if action succeeded
+#           the tasks framework will automatically update statistics according to this value
+#       (2) if it doesn't return a value, or returns None
+#           this action won't go into statistics
+#
+#
 def hold_on(session, target):
     seconds = target
     time.sleep(int(seconds))
@@ -22,14 +52,16 @@ def self_update(session, target):
 
 def follow_user(session, target):
     follow_single_user = sys.modules['instapy.unfollow_util'].follow_user
-    follow_single_user(session.browser, "profile", session.username, target,
-                       None, session.blacklist, session.logger, session.logfolder)
+    success = follow_single_user(session.browser, "profile", session.username, target,
+                                 None, session.blacklist, session.logger, session.logfolder)
+    return success
 
 
 def unfollow_user(session, target):
     unfollow_single_user = sys.modules['instapy.unfollow_util'].unfollow_user
-    unfollow_single_user(session.browser, "profile", session.username, target,
-                         None, None, session.relationship_data, session.logger, session.logfolder)
+    success = unfollow_single_user(session.browser, "profile", session.username, target,
+                                   None, None, session.relationship_data, session.logger, session.logfolder)
+    return success
 
 
 def like_by_tag(session, target):
@@ -37,7 +69,9 @@ def like_by_tag(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_tags([target], amount=50, interact=False)  # fetch and cache 50 links at a time
+    # fetch and cache amount = 50 links at a time
+    success = session.like_by_tags([target], amount=50, interact=False)
+    return success
 
 
 def like_by_location(session, target):
@@ -45,7 +79,8 @@ def like_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_locations([target], amount=50)  # fetch and cache 50 links at a time
+    success = session.like_by_locations([target], amount=50)
+    return success
 
 
 def comment_by_location(session, target):
@@ -53,19 +88,8 @@ def comment_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.comment_by_locations([target], amount=50, skip_top_posts=True)  # fetch and cache 50 links at a time
-
-
-action_handlers = {
-    "hold-on": hold_on,
-    "self-restart": self_restart,
-    "self-update": self_update,
-    "follow-user": follow_user,
-    "unfollow-user": unfollow_user,
-    "like-by-tag": like_by_tag,
-    "like-by-location": like_by_location,
-    "comment-by-location": comment_by_location
-}
+    success = session.comment_by_locations([target], amount=50, skip_top_posts=True)
+    return success
 
 
 def init_comment_by_location(session):
@@ -74,11 +98,6 @@ def init_comment_by_location(session):
                                    'I like your stuff'])
 
 
-subtask_init_handlers = {
-    "init-comment-by-location": init_comment_by_location
-}
-
-
 #
 #
 #
@@ -89,8 +108,17 @@ subtask_init_handlers = {
 #
 #
 #
+#   below are interfaces for tasks.py
+#   do not modify
 #
 #
+#
+#
+#
+#
+#
+#
+handlers = register_handlers()
 
 
 def execute(action_type, target, ready):
@@ -103,7 +131,8 @@ def execute(action_type, target, ready):
     env.log("now performing task (%s, %s)" % (action_type, target), title="TASK ")
     session = env.get_session()
     try:
-        return action_handlers[action_type](session, target)
+        success = handlers[action_type](session, target)
+        do_statistics(action_type, target, success)
     except Exception as e:
         if not e:
             e = "action-handler-error"
@@ -116,8 +145,24 @@ def init_subtask(handler):
     if not handler:
         return
     try:
-        subtask_init_handlers[handler](session)
+        handlers[handler](session)
     except Exception as e:
         if not e:
             e = "subtask-init-error"
         env.error(handler, "exception", str(e))
+
+
+def do_statistics(action, target, success):
+    if action is None:
+        return
+    statistics = env._action_statistics
+    if action not in statistics:
+        statistics[action] = {
+            "success": 0,
+            "fail": 0
+        }
+    if success:
+        statistics[action]["success"] += 1
+    else:
+        statistics[action]["fail"] += 1
+    env.update({"actionStatistics": statistics})
