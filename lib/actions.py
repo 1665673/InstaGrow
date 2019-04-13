@@ -28,10 +28,12 @@ def register_handlers():
 #
 #
 #   for all action handlers:
-#       (1) if it returns a value, it has to be a boolean value indicating if action succeeded
+#       (1) if it RETURNS a value, it has to be a boolean value indicating if action succeeded
 #           the tasks framework will automatically update statistics according to this value
-#       (2) if it doesn't return a value, or returns None
+#       (2) if it doesn't RETURN a value, or returns None
 #           this action won't go into statistics
+#       (3) if you want to do customized complicated statistics other than simply a success/fail count
+#           please RETURN None, then implement the customized logic in handler
 #
 #
 def hold_on(session, target):
@@ -54,14 +56,14 @@ def follow_user(session, target):
     follow_single_user = sys.modules['instapy.unfollow_util'].follow_user
     success = follow_single_user(session.browser, "profile", session.username, target,
                                  None, session.blacklist, session.logger, session.logfolder)
-    return success
+    return success[1] == "success"
 
 
 def unfollow_user(session, target):
     unfollow_single_user = sys.modules['instapy.unfollow_util'].unfollow_user
     success = unfollow_single_user(session.browser, "profile", session.username, target,
                                    None, None, session.relationship_data, session.logger, session.logfolder)
-    return success
+    return success[1] == "success"
 
 
 def like_by_tag(session, target):
@@ -70,8 +72,8 @@ def like_by_tag(session, target):
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
     # fetch and cache amount = 50 links at a time
-    success = session.like_by_tags([target], amount=50, interact=False)
-    return success
+    session.like_by_tags([target], amount=50, interact=False)
+    return session.like_img_success
 
 
 def like_by_location(session, target):
@@ -79,8 +81,8 @@ def like_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    success = session.like_by_locations([target], amount=50)
-    return success
+    session.like_by_locations([target], amount=50)
+    return session.like_img_success
 
 
 def comment_by_location(session, target):
@@ -88,8 +90,8 @@ def comment_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    success = session.comment_by_locations([target], amount=50, skip_top_posts=True)
-    return success
+    session.comment_by_locations([target], amount=50, skip_top_posts=True)
+    return session.comment_img_success
 
 
 def init_comment_by_location(session):

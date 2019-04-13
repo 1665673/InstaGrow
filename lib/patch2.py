@@ -344,6 +344,7 @@ def like_by_locations_patch(self,
     # self.logger.info('Inappropriate: {}'.format(inap_img))
     # self.logger.info('Not valid users: {}\n'.format(not_valid_users))
 
+    self.like_img_success = (liked_img > 0)
     self.followed += followed
     self.liked_img += liked_img
     self.already_liked += already_liked
@@ -615,6 +616,7 @@ def like_by_tags_patch(self,
     # self.logger.info('Inappropriate: {}'.format(inap_img))
     # self.logger.info('Not valid users: {}\n'.format(not_valid_users))
 
+    self.like_img_success = (liked_img > 0)
     self.liked_img += liked_img
     self.already_liked += already_liked
     self.commented += commented
@@ -837,6 +839,7 @@ def comment_by_locations_patch(self,
             except NoSuchElementException as err:
                 self.logger.error('Invalid Page: {}'.format(err))
 
+    self.comment_img_success = (commented > 0)
     # self.logger.info('Location: {}'.format(location.encode('utf-8')))
     self.logger.info('Commented: {}'.format(commented))
     # self.logger.info('Followed: {}'.format(followed))
