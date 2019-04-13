@@ -488,6 +488,9 @@ def event_handler(type, name, data):
     headers = {'content-type': 'application/json'}
 
     if type == "SELENIUM" and name == "CONNECTION-VERIFIED":
+        # report sessionIP
+        update({"sessionIP": data["sessionIP"]})
+        # report proxy client, if applicable
         if data["proxy"]:
             url = proxy_add_client_url.replace("{string}", data["proxy"])
             postdata = {
@@ -498,10 +501,10 @@ def event_handler(type, name, data):
                 requests.post(url=url, data=_json.dumps(postdata), headers=headers)
             except Exception:
                 pass
-            # update sessionIP in reporter
-            update({"sessionIP": data["sessionIP"]})
+
 
     elif type == "SELENIUM" and name == "CONNECTION-INVALID":
+        # report proxy fail, if applicable
         if data["proxy"]:
             url = proxy_add_blacklist_url.replace("{string}", data["proxy"])
             data = {
@@ -514,6 +517,7 @@ def event_handler(type, name, data):
                 pass
 
     elif type == "SESSION" and name == "SCRIPT-QUITTING":
+        # report release of proxy, if applicable
         if data["proxy"]:
             url = proxy_delete_client_url.replace("{string}", data["proxy"]).replace("{client_id}", _reporter.id)
             try:

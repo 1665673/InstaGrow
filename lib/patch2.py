@@ -126,7 +126,7 @@ def like_by_locations_patch(self,
             break
 
         # self.logger.info('Location [{}/{}]'.format(index + 1, len(locations)))
-        self.logger.info('--> {}'.format(location.encode('utf-8')))
+        # self.logger.info('--> {}'.format(location.encode('utf-8')))
 
         #
         #
@@ -176,7 +176,7 @@ def like_by_locations_patch(self,
                 break
 
             # self.logger.info('[{}/{}]'.format(i + 1, len(links)))
-            self.logger.info(link)
+            # self.logger.info(link)
 
             try:
                 inappropriate, user_name, is_video, reason, scope = (
@@ -435,7 +435,7 @@ def like_by_tags_patch(self,
         #
         #
         # self.logger.info('Tag [{}/{}]'.format(index + 1, len(tags)))
-        self.logger.info('--> {}'.format(tag.encode('utf-8')))
+        # self.logger.info('--> {}'.format(tag.encode('utf-8')))
 
         for i, link in enumerate(links):
             if self.jumps["consequent"]["likes"] >= self.jumps["limit"][
@@ -449,7 +449,7 @@ def like_by_tags_patch(self,
                 break
 
             # self.logger.info('[{}/{}]'.format(i + 1, len(links)))
-            self.logger.info(link)
+            # self.logger.info(link)
 
             # self.browser.get('http://ifconfig.me/ip')
             # self.logger.info(self.browser.page_source)
@@ -658,7 +658,7 @@ def comment_by_locations_patch(self,
             break
 
         # self.logger.info('Location [{}/{}]'.format(index + 1, len(locations)))
-        self.logger.info('--> {}'.format(location.encode('utf-8')))
+        # self.logger.info('--> {}'.format(location.encode('utf-8')))
 
         try:
             #
@@ -707,7 +707,7 @@ def comment_by_locations_patch(self,
                 break
 
             # self.logger.info('[{}/{}]'.format(i + 1, len(links)))
-            self.logger.info(link)
+            # self.logger.info(link)
 
             try:
                 inappropriate, user_name, is_video, reason, scope = (
@@ -872,6 +872,7 @@ def follow_user_patch(browser, track, login, user_name, button, blacklist, logge
     # go to user's main profile page
     user_link = "https://www.instagram.com/{}/".format(user_name)
     web_address_navigator(browser, user_link)
+    logger.info(user_link)
     # stay 1 second in profile page
     sleep(1)
     #
@@ -1002,6 +1003,7 @@ def unfollow_user_patch(browser, track, username, person, person_id, button, rel
     # go to user's main profile page
     user_link = "https://www.instagram.com/{}/".format(person)
     web_address_navigator(browser, user_link)
+    logger.info(user_link)
     # stay 1 second in profile page
     sleep(1)
     #
