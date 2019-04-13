@@ -56,7 +56,7 @@ def follow_user(session, target):
     follow_single_user = sys.modules['instapy.unfollow_util'].follow_user
     success = follow_single_user(session.browser, "profile", session.username, target,
                                  None, session.blacklist, session.logger, session.logfolder)
-    return success[1] == "success" or (None if "unfollow-user" not in env._action_statistics else False)
+    return success[1] == "success"
 
 
 def unfollow_user(session, target):
