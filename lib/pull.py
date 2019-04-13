@@ -3,9 +3,9 @@ import argparse
 import json
 import sys
 import os
-import time
+# import time
 import copy
-import pickle
+# import pickle
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
@@ -41,7 +41,7 @@ def get_data(username, sources=[], env={}):
             return {}
 
 
-def print_details(data, fields):
+def get_details_string(data, fields):
     data = copy.copy(data)
     tasks = ""
     if "tasks" in data and data["tasks"] is not None:
@@ -49,14 +49,17 @@ def print_details(data, fields):
         for t in data["tasks"]:
             tasks += t + " "
     data["tasks"] = tasks
-    data["cookies"] = "[cookie-size: " + str(len(data["cookies"]) if "cookies" in data else 0) + "]"
+    data["cookies"] = "[cookie-size: {} entries]".format(len(data["cookies"]) if "cookies" in data else 0)
 
     for field in all_fields:
         if field not in fields:
             data[field] = ""
 
-    print("%s %s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
-                                data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"]))
+    # print("%s %s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
+    #                            data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"]))
+    return "{0} {1} {2} {3} {4}\n" \
+        .format(data["instagramUser"], data["instagramPassword"],
+                data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"])
 
 
 def restore_cookies(username, cookies):
@@ -91,10 +94,12 @@ def userdata(username, fields, sources=[], env={}):
         #    version = sys.modules["lib.environments"]._reporter_fields["version"]
         data = get_data(username, sources, env)
         source = str(sources) if sources is not None and len(sources) > 0 else "latest-records"
+        env = sys.modules["lib.environments"]
+        _args = env.args()
         if "instagramUser" in data:
-            _args = sys.modules["lib.environments"].args()
-            print("PULL  [%d] user credentials @%s successfully pulled from server" % (int(time.time()), source))
-            print_details(data, fields)
+            # print("PULL  [%d] user credentials @%s successfully pulled from server" % (int(time.time()), source))
+            env.log("user credentials @{} successfully pulled from server".format(source), title="PULL ")
+            env.log(get_details_string(data, fields), title="PULL ")
             # if _args.username is None:
             #    _args.username = data["instagramUser"]
             if "password" in fields and _args.password is None:
@@ -106,9 +111,9 @@ def userdata(username, fields, sources=[], env={}):
             if "cookies" in fields and "cookies" in data:
                 # _args.cookie = data["cookie"]
                 restore_cookies(username, data["cookies"])
-
         else:
-            print("PULL  [%d] no credentials @%s available from server" % (int(time.time()), source))
+            # print("PULL  [%d] no credentials @%s available from server" % (int(time.time()), source))
+            env.log("no credentials @{} available from server".format(source), title="PULL ")
 
 
 def main():
@@ -122,7 +127,7 @@ def main():
 
     data = get_data(username, sources, args.__dict__)
     if "instagramUser" in data:
-        print_details(data, all_fields)
+        print(get_details_string(data, all_fields))
     else:
         print("no credentials available from server")
 
