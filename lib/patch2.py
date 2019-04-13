@@ -340,12 +340,13 @@ def like_by_locations_patch(self,
         #
 
     # self.logger.info('Location: {}'.format(location.encode('utf-8')))
-    self.logger.info('Liked: {}'.format(liked_img))
-    self.logger.info('Already Liked: {}'.format(already_liked))
+    # self.logger.info('Liked: {}'.format(liked_img))
+    # self.logger.info('Already Liked: {}'.format(already_liked))
     # self.logger.info('Commented: {}'.format(commented))
     # self.logger.info('Followed: {}'.format(followed))
     # self.logger.info('Inappropriate: {}'.format(inap_img))
     # self.logger.info('Not valid users: {}\n'.format(not_valid_users))
+    self.logger.info('Liked: {0}, Already liked: {1}'.format(liked_img, already_liked))
 
     self.like_img_success = (liked_img > 0)
     self.followed += followed
@@ -612,12 +613,13 @@ def like_by_tags_patch(self,
                 self.logger.error('Invalid Page: {}'.format(err))
 
     # self.logger.info('Tag: {}'.format(tag.encode('utf-8')))
-    self.logger.info('Liked: {}'.format(liked_img))
-    self.logger.info('Already Liked: {}'.format(already_liked))
+    # self.logger.info('Liked: {}'.format(liked_img))
+    # self.logger.info('Already Liked: {}'.format(already_liked))
     # self.logger.info('Commented: {}'.format(commented))
     # self.logger.info('Followed: {}'.format(followed))
     # self.logger.info('Inappropriate: {}'.format(inap_img))
     # self.logger.info('Not valid users: {}\n'.format(not_valid_users))
+    self.logger.info('Liked: {0}, Already liked: {1}'.format(liked_img, already_liked))
 
     self.like_img_success = (liked_img > 0)
     self.liked_img += liked_img
@@ -870,9 +872,9 @@ def comment_by_locations_patch(self,
 #
 #
 def check_link_patch(browser, post_link, dont_like, mandatory_words,
-               mandatory_language, mandatory_character,
-               is_mandatory_character, check_character_set, ignore_if_contains,
-               logger):
+                     mandatory_language, mandatory_character,
+                     is_mandatory_character, check_character_set, ignore_if_contains,
+                     logger):
     """
     Check the given link if it is appropriate
 
