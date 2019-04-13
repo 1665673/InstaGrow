@@ -155,7 +155,7 @@ def init_subtask(handler):
 
 
 def do_statistics(action, target, success):
-    if action is None:
+    if action is None or success is None:
         return
     statistics = env._action_statistics
     if action not in statistics:
