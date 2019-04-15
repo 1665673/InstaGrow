@@ -26,14 +26,19 @@ def register_handlers():
 
 
 #
+#   NOTE about handlers' return value
 #
 #   for all action handlers:
-#       (1) if it RETURNS a value, it has to be a boolean value indicating if action succeeded
-#           the tasks framework will automatically update statistics according to this value
-#       (2) if it doesn't RETURN a value, or returns None
+#       (1) if it RETURNS a value, it has to be either:
+#           (a) a boolean value, indicating if action succeeded, or
+#           (b) None
+#       (2) if it returns a boolean value
+#           tasks.py will automatically update statistics according to this value
+#       (3) if it doesn't RETURN a value, or returns None
 #           this action won't go into statistics
-#       (3) if you want to do customized complicated statistics other than simply a success/fail count
-#           please RETURN None, then implement the customized logic in handler
+#       (4) if you want to do customized complicated statistics
+#           rather than simply a success/fail count automatically handled by tasks.py
+#           please RETURN None, then implement the customized logic in the handler
 #
 #
 def hold_on(session, target):
@@ -56,6 +61,8 @@ def follow_user(session, target):
     follow_single_user = sys.modules['instapy.unfollow_util'].follow_user
     success = follow_single_user(session.browser, "profile", session.username, target,
                                  None, session.blacklist, session.logger, session.logfolder)
+    # return None if follow-fails happens at the beginning of running a script
+    # this will prevent these false-negative fails going into statistics
     return success[1] == "success" or (None if "unfollow-user" not in env._action_statistics else False)
 
 
@@ -110,8 +117,16 @@ def init_comment_by_location(session):
 #
 #
 #
+#
+#
+#
 #   below are interfaces for tasks.py
 #   do not modify
+#
+#
+#
+#
+#
 #
 #
 #
@@ -127,10 +142,10 @@ def execute(action_type, target, ready):
     current = time.time()
     if current < ready:
         delay = ready - current
-        env.log("sleep %1.2fs till task (%s, %s) is ready" % (delay, action_type, target), title="TASK ")
+        env.log("sleep %1.2fs till action (%s, %s) is ready" % (delay, action_type, target), title="TASK ")
         time.sleep(delay)
 
-    env.log("now performing task (%s, %s)" % (action_type, target), title="TASK ")
+    env.log("now performing action (%s, %s)" % (action_type, target), title="TASK ")
     session = env.get_session()
     try:
         success = handlers[action_type](session, target)

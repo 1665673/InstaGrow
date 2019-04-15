@@ -238,17 +238,21 @@ def process_arguments(**kw):
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", action="store_true")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
+    parser.add_argument("-ra", "--retry-allocate", action="store_true")
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
 
-    # if keyword user/pass/proxy specified, overwrite the positional ones
+    # preprocess some arguments of equivalents
     if _args.username1:
         _args.username = _args.username1
     if _args.password1:
         _args.password = _args.password1
     if _args.proxy1:
         _args.proxy = _args.proxy1
+    if _args.retry_allocate:
+        _args.retry_proxy = True
+        _args.allocate_proxy = True
 
     # merge named parameters **kw into command line arguments
     if "version" not in kw:
@@ -563,8 +567,9 @@ def set_task_status(task_id, status):
         "taskID": task_id,
         "status": status
     }
-    url = set_task_status_url.replace("{id}", _reporter.id)
+    
     try:
+        url = set_task_status_url.replace("{id}", _reporter.id)
         requests.put(url=url, data=_json.dumps(data), headers=headers)
     except Exception:
         pass
