@@ -8,7 +8,8 @@ env.config(version="like-dance")
 SLEEP_BETWEEN_EACH_LIKE = 100
 TRACK_FOLLOWER_COUNT_GAP = 3600
 
-tags = ['#kpop','#dancecover','#kpopdance',' #kpopdancecover','#coverdance','#kpopcover','#choreography','#bts','#blackpink','#twice','#댄스','#안무','#춤','#portrait','#photography','#portraitphotography','#igfasion']
+tags = ['#kpop', '#dancecover', '#kpopdance', ' #kpopdancecover', '#coverdance', '#kpopcover', '#choreography', '#bts',
+        '#blackpink', '#twice', '#댄스', '#안무', '#춤', '#portrait', '#photography', '#portraitphotography', '#igfasion']
 
 session = InstaPy(**env.arguments())
 

@@ -116,7 +116,7 @@ def login(self):
         if str(e) == "query timeout":
             InstaPy.env.event("LOGIN", "WAITING-TIMEOUT")
         else:
-            raise
+            InstaPy.env.error("LOGIN", "exception", str(e))
 
     if not logged_in:
         InstaPy.env.event("LOGIN", "FAIL")
@@ -126,7 +126,8 @@ def login(self):
                         "login",
                         "critical",
                         self.logger)
-        self.aborting = True
+        # self.aborting = True
+        InstaPy.env.safe_quit(self)
 
     else:
         InstaPy.env.event("LOGIN", "SUCCESS")
@@ -168,9 +169,8 @@ def set_selenium_local_session_patch(self):
     #
     #
     query_mode = InstaPy.env.args().query
-    retry_proxy = InstaPy.env.args().retry_proxy
+    retry_proxy = InstaPy.env.args().retry_proxy == "on"
     alloc_proxy = InstaPy.env.args().allocate_proxy
-    using_proxy = retry_proxy or alloc_proxy or bool(self.proxy_address)
 
     proxy_string = None if not self.proxy_address else "%s:%s:%s:%s" % (
         self.proxy_address, self.proxy_port, self.proxy_username, self.proxy_password)
@@ -182,6 +182,7 @@ def set_selenium_local_session_patch(self):
         #   prepare proxy configuration if using proxy
         #   do necessary query if in query mode
         #
+        using_proxy = alloc_proxy or bool(self.proxy_address) or (retry_proxy and not first_attempt)
         if using_proxy:
             InstaPy.super_print("[selenium] setting up proxy")
             if (not first_attempt) or (not self.proxy_address):
@@ -455,6 +456,7 @@ def login_user(browser,
     button_login = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
     super_print("[login_user] located login form-control elements. ready for logging in.")
 
+    retry_credentials = env.args().retry_credentials == "on"
     page_after_login = ""
     first_attempt = True
     while True:
@@ -521,6 +523,10 @@ def login_user(browser,
             indicator_class = indicator_ele.get_attribute("class")
             super_print("[login_user] login result indicator found! class:%s" % indicator_class)
             if indicator_class == "eiCW-":
+                # if arguments says do not retry, then we quit
+                if not retry_credentials:
+                    return None
+                # otherwise, we keep trying new credentials
                 super_print("[login_user] it's a wrong-login-credential indicator, try again")
                 first_attempt = False
                 # username = ""

@@ -29,7 +29,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.26"
+ENVIRONMENT_VERSION = "0.27"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -236,7 +236,8 @@ def process_arguments(**kw):
     parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
     parser.add_argument("-pb", "--pull-by", nargs="+", type=str)
     parser.add_argument("-q", "--query", action="store_true")
-    parser.add_argument("-rp", "--retry-proxy", action="store_true")
+    parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
+    parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
     parser.add_argument("-ra", "--retry-allocate", action="store_true")
     parser.add_argument("-m", "--merge", nargs="*", type=str)
@@ -520,6 +521,7 @@ def event_handler(type, name, data):
             except Exception:
                 pass
 
+
     elif type == "SESSION" and name == "SCRIPT-QUITTING":
         # report release of proxy, if applicable
         if data["proxy"]:
@@ -567,7 +569,7 @@ def set_task_status(task_id, status):
         "taskID": task_id,
         "status": status
     }
-    
+
     try:
         url = set_task_status_url.replace("{id}", _reporter.id)
         requests.put(url=url, data=_json.dumps(data), headers=headers)
@@ -706,6 +708,11 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
         followers = get_follower_num(session)
         report_follower_count(session, followers)
         return followers
+
+
+def safe_quit(session, message=""):
+    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string, "message": message})
+    exit(0)
 
 
 def self_restart(session, arguments):

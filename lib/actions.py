@@ -9,6 +9,7 @@ def register_handlers():
         #
         #   actions
         #
+        "quit": quit,
         "hold-on": hold_on,
         "self-restart": self_restart,
         "self-update": self_update,
@@ -41,6 +42,11 @@ def register_handlers():
 #           please RETURN None, then implement the customized logic in the handler
 #
 #
+def quit(session, target):
+    message = target
+    env.safe_quit(session, message)
+
+
 def hold_on(session, target):
     seconds = target
     time.sleep(int(seconds))
@@ -151,6 +157,7 @@ def execute(action_type, target, ready):
         success = handlers[action_type](session, target)
         do_statistics(action_type, target, success)
     except Exception as e:
+        do_statistics(action_type, target, False)
         if not e:
             e = "action-handler-error"
         env.error(action_type, "exception", str(e))
@@ -178,8 +185,16 @@ def do_statistics(action, target, success):
             "success": 0,
             "fail": 0
         }
+    # add this action into statistics
     if success:
         statistics[action]["success"] += 1
     else:
         statistics[action]["fail"] += 1
+    # mark this action the last executed action
+    statistics["lastAction"] = {
+        "name": action,
+        "target": target,
+        "result": success
+    }
+    # update statistics to server
     env.update({"actionStatistics": statistics})
