@@ -15,7 +15,8 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
-DEFAULT_SERVER_NAME = "not-named-server"
+DEFAULT_SERVER_NAME = "server-with-no-name"
+DEFAULT_SERVER_TYPE = "regular"
 DEFAULT_REPORT_INTERVAL = 30
 DEFAULT_PORT_NUMBER = 8000
 MAIN_SERVER_ADDRESS = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -204,12 +205,13 @@ def run_script(instance, username, argv):
 #
 
 
-def checkin_droplet(name, port):
+def checkin_droplet(port, name, _type):
     pid = os.getpid()
     data = {
         "name": name,
-        "pid": pid,
-        "port": port
+        "type": _type,
+        "port": port,
+        "pid": pid
     }
     try:
         headers = {'content-type': 'application/json'}
@@ -293,22 +295,25 @@ def main():
     #
     parser = argparse.ArgumentParser()
     parser.add_argument("-a", "--address", type=str)
-    parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-p", "--port", type=int)
+    parser.add_argument("-n", "--name", type=str)
+    parser.add_argument("-t", "--type", type=str)
     parser.add_argument("-ri", "--report-interval", type=int)
     args = parser.parse_args()
     if not args.address:
         args.address = DEFAULT_SERVER_ADDRESS
-    if not args.name:
-        args.name = DEFAULT_SERVER_NAME
     if not args.port:
         args.port = DEFAULT_PORT_NUMBER
+    if not args.name:
+        args.name = DEFAULT_SERVER_NAME
+    if not args.type:
+        args.type = DEFAULT_SERVER_TYPE
     if not args.report_interval:
         args.report_interval = DEFAULT_REPORT_INTERVAL
     #
     #   checkin server
     #
-    droplet_id = checkin_droplet(args.name, args.port)
+    droplet_id = checkin_droplet(args.port, args.name, args.type)
 
     #
     #   start report timer
