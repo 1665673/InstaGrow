@@ -10,19 +10,27 @@ import subprocess
 import argparse
 import requests
 import threading
+import getpass
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
-DEFAULT_SERVER_NAME = "server-with-no-name"
+DEFAULT_SERVER_NAME = "droplet-with-no-name"
 DEFAULT_SERVER_TYPE = "regular"
 DEFAULT_REPORT_INTERVAL = 30
 DEFAULT_PORT_NUMBER = 8000
 MAIN_SERVER_ADDRESS = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
-CHECK_IN_URL = MAIN_SERVER_ADDRESS + "/admin/droplet/check-in"
-REPORT_STATUS_URL = MAIN_SERVER_ADDRESS + "/admin/droplet/report-status"
+#
+#   REST checkin interface
+#
+CHECK_IN_URL = MAIN_SERVER_ADDRESS + "/admin/droplets"  # POST
+CHECK_OUT_URL = MAIN_SERVER_ADDRESS + "/admin/droplets/{id}"  # DEL
+REPORT_STATUS_URL = MAIN_SERVER_ADDRESS + "/admin/droplets/{id}"  # PUT
+_httpd = None
+_id = None
 _scripts = {}
+_report_timer = None
 
 
 class Server(BaseHTTPRequestHandler):
@@ -39,7 +47,7 @@ class Server(BaseHTTPRequestHandler):
         return
 
     def respond(self):
-        content = self.handle_http(200, "text/html")
+        content = self.handle_http(200, "application/json")
         self.wfile.write(content)
 
     def handle_http(self, status, content_type):
@@ -48,6 +56,9 @@ class Server(BaseHTTPRequestHandler):
         self.end_headers()
 
         parts = re.search("/([^/]+)/([^/]+)(/([^/]+))?", self.path)
+        result = {
+            "result": "no result"
+        }
         if parts:
             parts = parts.groups()
             if len(parts) > 2:
@@ -68,12 +79,17 @@ class Server(BaseHTTPRequestHandler):
                         restart_script(instance)
                     else:
                         pass
-                    return bytes("ok", "UTF-8")
+                    message = "success"
                 except Exception as e:
-                    return bytes(str(e), "UTF-8")
-            return bytes("not-enough-url-arguments", "UTF-8")
+                    message = str(e)
+            else:
+                message = "not-enough-url-arguments"
+        else:
+            message = "invalid-url"
 
-        return bytes("invalid-url", "UTF-8")
+        result["result"] = message
+
+        return bytes(json.dumps(result), "UTF-8")
 
 
 #
@@ -108,6 +124,7 @@ def login_script(instance):
 
 # arguments is a list consumed by subprocess.Popen
 def start_script(instance, arguments):
+    printt("[start-script] instance:", instance)
     if not instance:
         raise Exception("no-instance")
     if instance in _scripts:
@@ -141,6 +158,10 @@ def stop_script(instance):
     printt("[stop-script] instance:", instance)
     if not instance or instance not in _scripts:
         raise Exception("no-instance or invalid instance")
+    start_time = _scripts[instance]["start-time"]
+    if start_time + 30 < int(time.time()):
+        raise Exception("please don't stop an instance within 30 seconds of starting. wait for another: {} seconds"
+                        .format(int(time.time()) - start_time))
     process = _scripts[instance]["process"]
     # process.kill()
     # process.terminate()
@@ -152,8 +173,8 @@ def stop_script(instance):
 
 
 def restart_script(instance):
+    printt("[restart-script] instance:", instance)
     process_info = stop_script(instance)
-    printt("[restart-script]", process_info)
     start_script(instance, process_info["arguments"])
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
@@ -177,7 +198,8 @@ def run_script(instance, username, argv):
         _scripts[instance] = {
             "username": username,
             "arguments": argv,
-            "process": process
+            "process": process,
+            "start-time": int(time.time())
         }
     except Exception as e:
         printt(str(e))
@@ -203,11 +225,46 @@ def run_script(instance, username, argv):
 #
 #
 #
+def exit_gracefully(*av):
+    printt("droplet shutting down...")
+    checkout_droplet()
+    global _report_timer
+    global _httpd
+    if _report_timer:
+        _report_timer.cancel()
+        printt("successfully cancelled report timer...")
+
+    _httpd.server_close()
+    printt(time.asctime(), 'Server DOWN')
+    exit(0)
+
+
+def checkout_droplet():
+    global _id
+    if _id:
+        try:
+            url = CHECK_OUT_URL.replace("{id}", _id)
+            result = requests.delete(url=url).json()
+            result = result["result"]
+            if result == "success":
+                _id = None
+                printt("successfully checked-out droplet")
+                return
+        except:
+            pass
+        printt("failed to check-out droplet")
+    else:
+        printt("droplet not checked-in. no need to check-out")
 
 
 def checkin_droplet(port, name, _type):
+    global _id
+    if _id:
+        printt("droplet already checked-in")
+        return
     pid = os.getpid()
     data = {
+        "systemUser": getpass.getuser(),
         "name": name,
         "type": _type,
         "port": port,
@@ -216,24 +273,31 @@ def checkin_droplet(port, name, _type):
     try:
         headers = {'content-type': 'application/json'}
         res = requests.post(url=CHECK_IN_URL, data=json.dumps(data), headers=headers).json()
-        return res["_id"]
+        _id = res["_id"]
+        printt("successfully checked-in droplet")
+        return _id
     except Exception as e:
         printt("error in checkin_droplet(): " + str(e))
         exit(0)
 
 
-def report_to_main_server(droplet_id):
+def report_to_main_server():
+    global _id
+    if not _id:
+        return
     # keep timer alive
-    threading.Timer(DEFAULT_REPORT_INTERVAL, report_to_main_server, [droplet_id]).start()
+    global _report_timer
+    _report_timer = threading.Timer(DEFAULT_REPORT_INTERVAL, report_to_main_server)
+    _report_timer.start()
 
     data = {
-        "_id": droplet_id,
         "status": get_droplet_status_summary(),
         "scripts": get_droplet_scripts_summary()
     }
     headers = {'content-type': 'application/json'}
     try:
-        requests.post(url=REPORT_STATUS_URL, data=json.dumps(data), headers=headers)
+        url = REPORT_STATUS_URL.replace("{id}", _id)
+        requests.put(url=url, data=json.dumps(data), headers=headers)
     except Exception as e:
         printt("report_to_main_server(): " + str(e))
 
@@ -284,7 +348,8 @@ def get_droplet_scripts_summary():
         scripts.append({
             "instance": instance,
             "arguments": _scripts[instance]["arguments"],
-            "username": _scripts[instance]["username"]
+            "username": _scripts[instance]["username"],
+            "startTime": _scripts[instance]["start-time"]
         })
     return scripts
 
@@ -311,28 +376,41 @@ def main():
     if not args.report_interval:
         args.report_interval = DEFAULT_REPORT_INTERVAL
     #
+    #   register graceful quit handler
+    #
+    try:
+        signal.signal(signal.SIGINT, exit_gracefully)
+        signal.signal(signal.SIGTERM, exit_gracefully)
+        signal.signal(signal.SIGKILL, exit_gracefully)
+    except Exception as e:
+        printt("error-registering-exit-handlers: ", str(e))
+
+    #
     #   checkin server
     #
-    droplet_id = checkin_droplet(args.port, args.name, args.type)
+    checkin_droplet(args.port, args.name, args.type)
 
     #
     #   start report timer
     #
-    report_to_main_server(droplet_id)
+    report_to_main_server()
 
     #
     #   start server
     #
-    httpd = None
+    global _httpd
     try:
-        httpd = HTTPServer((args.address, args.port), Server)
-        printt(time.asctime(), 'Server UP - %s:%s' % (args.address, args.port))
-        httpd.serve_forever()
+        printt('Server UP - %s:%s' % (args.address, args.port))
+        _httpd = HTTPServer((args.address, args.port), Server)
+        _httpd.serve_forever()
+
     except Exception as e:
         printt(str(e))
-        exit(0)
-    httpd.server_close()
-    printt(time.asctime(), 'Server DOWN - %s:%s' % (args.address, args.port))
+
+    #
+    #   quit the program
+    #
+    exit_gracefully()
 
 
 if __name__ == '__main__':
