@@ -92,6 +92,10 @@ class Server(BaseHTTPRequestHandler):
 #
 #
 #
+def printt(*av, **kw):
+    print(int(time.time()), *av, **kw)
+
+
 def login_script(instance):
     if not instance:
         raise Exception("no-instance")
@@ -127,12 +131,13 @@ def start_script(instance, arguments):
         arguments += ["-s"]
     if "-i" not in arguments and "--instance" not in arguments:
         arguments += ["-i", instance]
-    if "-g" not in arguments and "--gui" not in arguments:
-        arguments += ["-g"]
+    # if "-g" not in arguments and "--gui" not in arguments:
+    #     arguments += ["-g"]
     run_script(instance, username, arguments)
 
 
 def stop_script(instance):
+    printt("[stop-script] instance:", instance)
     if not instance or instance not in _scripts:
         raise Exception("no-instance or invalid instance")
     process = _scripts[instance]["process"]
@@ -147,7 +152,7 @@ def stop_script(instance):
 
 def restart_script(instance):
     process_info = stop_script(instance)
-    print(process_info)
+    printt("[restart-script]", process_info)
     start_script(instance, process_info["arguments"])
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
@@ -157,11 +162,11 @@ def run_script(instance, username, argv):
     global _scripts
     # n = os.fork()
     # if n > 0:
-    #     print("Parent process and id is : ", os.getpid())
+    #     printt("Parent process and id is : ", os.getpid())
     # else:
     #     python = sys.executable
     #     os.execl(python, python, *argv)
-    print("!!!!!about to run this script:\n", instance, username, str(["python3"] + argv))
+    printt("[run-script]", "about to run this script:\n", instance, username, str(["python3"] + argv))
 
     try:
         process = subprocess.Popen(["python3"] + argv,
@@ -174,7 +179,7 @@ def run_script(instance, username, argv):
             "process": process
         }
     except Exception as e:
-        print(str(e))
+        printt(str(e))
         raise
     # output = process.stdout.read()
     # log("output from terminal:\n" + str(output, "utf-8"), title="GIT  ")
@@ -197,6 +202,8 @@ def run_script(instance, username, argv):
 #
 #
 #
+
+
 def checkin_droplet(name, port):
     pid = os.getpid()
     data = {
@@ -209,7 +216,7 @@ def checkin_droplet(name, port):
         res = requests.post(url=CHECK_IN_URL, data=json.dumps(data), headers=headers).json()
         return res["_id"]
     except Exception as e:
-        print("error in checkin_droplet(): " + str(e))
+        printt("error in checkin_droplet(): " + str(e))
         exit(0)
 
 
@@ -226,7 +233,7 @@ def report_to_main_server(droplet_id):
     try:
         requests.post(url=REPORT_STATUS_URL, data=json.dumps(data), headers=headers)
     except Exception as e:
-        print("report_to_main_server(): " + str(e))
+        printt("report_to_main_server(): " + str(e))
 
 
 def get_droplet_status_summary():
@@ -314,13 +321,13 @@ def main():
     httpd = None
     try:
         httpd = HTTPServer((args.address, args.port), Server)
-        print(time.asctime(), 'Server UP - %s:%s' % (args.address, args.port))
+        printt(time.asctime(), 'Server UP - %s:%s' % (args.address, args.port))
         httpd.serve_forever()
     except Exception as e:
-        print(str(e))
+        printt(str(e))
         exit(0)
     httpd.server_close()
-    print(time.asctime(), 'Server DOWN - %s:%s' % (args.address, args.port))
+    printt(time.asctime(), 'Server DOWN - %s:%s' % (args.address, args.port))
 
 
 if __name__ == '__main__':
