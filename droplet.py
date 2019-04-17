@@ -16,7 +16,7 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv())
 
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
-DEFAULT_SERVER_NAME = "droplet"
+DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
 DEFAULT_REPORT_INTERVAL = 30
 DEFAULT_PORT_NUMBER = 8000
@@ -370,7 +370,7 @@ def main():
     if not args.port:
         args.port = DEFAULT_PORT_NUMBER
     if not args.name:
-        args.name = DEFAULT_SERVER_NAME + "-" + str(int(time.time()))
+        args.name = DEFAULT_SERVER_NAME
     if not args.type:
         args.type = DEFAULT_SERVER_TYPE
     if not args.report_interval:
