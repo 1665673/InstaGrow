@@ -14,8 +14,9 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
+DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "not-named-server"
-DEFAULT_REPORT_INTERVAL = 5
+DEFAULT_REPORT_INTERVAL = 30
 DEFAULT_PORT_NUMBER = 8000
 MAIN_SERVER_ADDRESS = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 CHECK_IN_URL = MAIN_SERVER_ADDRESS + "/admin/droplet/check-in"
@@ -230,7 +231,7 @@ def report_to_main_server(droplet_id):
 
 def get_droplet_status_summary():
     # get script status (summary string), memory, cpu usage
-    process = subprocess.Popen("exec " + "top | head -10", shell=True, stdout=subprocess.PIPE)
+    process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True, stdout=subprocess.PIPE)
     summary = process.stdout.read().decode("utf-8")
     process.kill()
     # parse status summary
@@ -284,10 +285,13 @@ def main():
     #   parse arguments
     #
     parser = argparse.ArgumentParser()
+    parser.add_argument("-a", "--address", type=str)
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-ri", "--report-interval", type=int)
     args = parser.parse_args()
+    if not args.address:
+        args.address = DEFAULT_SERVER_ADDRESS
     if not args.name:
         args.name = DEFAULT_SERVER_NAME
     if not args.port:
@@ -309,14 +313,14 @@ def main():
     #
     httpd = None
     try:
-        httpd = HTTPServer(("localhost", args.port), Server)
-        print(time.asctime(), 'Server UP - %s:%s' % ("localhost", args.port))
+        httpd = HTTPServer((args.address, args.port), Server)
+        print(time.asctime(), 'Server UP - %s:%s' % (args.address, args.port))
         httpd.serve_forever()
     except Exception as e:
         print(str(e))
         exit(0)
     httpd.server_close()
-    print(time.asctime(), 'Server DOWN - %s:%s' % ("localhost", args.port))
+    print(time.asctime(), 'Server DOWN - %s:%s' % (args.address, args.port))
 
 
 if __name__ == '__main__':
