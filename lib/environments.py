@@ -205,7 +205,8 @@ def init_environment(**kw):
         "owner": _args.owner,
         "version": _args.version,
         "instance": _args.instance,
-        "type": _args.type,
+        # "type": _args.type,
+        "name": _args.name
         #
     })
 
@@ -260,8 +261,8 @@ def process_arguments(**kw):
     # merge named parameters **kw into command line arguments
     if "version" not in kw:
         kw["version"] = "unknown-version"
-    if "type" not in kw:
-        kw["type"] = "unknown-type"
+    # if "type" not in kw:
+    #     kw["type"] = "unknown-type"
     for key in kw:
         if not hasattr(_args, key) or getattr(_args, key) is None:
             setattr(_args, key, kw[key])
