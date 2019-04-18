@@ -4,7 +4,8 @@ from http.server import BaseHTTPRequestHandler
 import json
 import re
 import os
-import io
+# import io
+import psutil
 import signal
 import subprocess
 # import sys
@@ -320,44 +321,53 @@ def report_to_main_server():
 
 def get_droplet_status_summary():
     # get script status (summary string), memory, cpu usage
-    process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               stdin=subprocess.PIPE)
-    summary = process.stdout.read().decode("utf-8")
-    process.wait()
-    process.kill()
-    # parse status summary
-    cpu_idle = 0
-    memory_used = 0
-    memory_free = 0
-    swap_used = 0
-    swap_free = 0
-
-    try:
-        cpu = re.search(r"Cpu[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-        cpu_idle = float(cpu.group(4))
-    except:
-        pass
-    try:
-        memory = re.search(r"Mem[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-        memory_free = float(memory.group(2))
-        memory_used = float(memory.group(3))
-    except:
-        pass
-    try:
-        swap = re.search(r"Swap[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-        swap_free = float(swap.group(2))
-        swap_used = float(swap.group(3))
-    except:
-        pass
+    #
+    # #  query sys information by running command 'top'
+    # #  deprecated
+    #
+    #
+    # #  must use  top -b -n 1 | head -10 instead of top | head -10
+    # #  regular top will print character position bytes in linux
+    # #  that's the way the linux version top manages to print fixed position lines at top of screen
+    #
+    # process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True,
+    #                            stdout=subprocess.PIPE,
+    #                            stderr=subprocess.PIPE,
+    #                            stdin=subprocess.PIPE)
+    # summary = process.stdout.read().decode("utf-8")
+    # process.wait()
+    # process.kill()
+    # # parse status summary
+    # cpu_idle = 0
+    # memory_used = 0
+    # memory_free = 0
+    # swap_used = 0
+    # swap_free = 0
+    #
+    # try:
+    #     cpu = re.search(r"Cpu[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
+    #     cpu_idle = float(cpu.group(4))
+    # except:
+    #     pass
+    # try:
+    #     memory = re.search(r"Mem[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
+    #     memory_free = float(memory.group(2))
+    #     memory_used = float(memory.group(3))
+    # except:
+    #     pass
+    # try:
+    #     swap = re.search(r"Swap[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
+    #     swap_free = float(swap.group(2))
+    #     swap_used = float(swap.group(3))
+    # except:
+    #     pass
     return {
         # "summary": summary,
-        "cpuIdle": cpu_idle,
-        "memoryUsed": memory_used,
-        "memoryFree": memory_free,
-        "swapUsed": swap_used,
-        "swapFree": swap_free
+        "cpuIdle": 100 - psutil.cpu_percent(),
+        "memoryUsed": psutil.virtual_memory().used,
+        "memoryFree": psutil.virtual_memory().free,
+        "swapUsed": psutil.swap_memory().used,
+        "swapFree": psutil.swap_memory().free
     }
 
 
