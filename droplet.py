@@ -395,9 +395,10 @@ def get_droplet_status_summary():
         # "summary": summary,
         "cpuIdle": 100 - psutil.cpu_percent(),
         "memoryUsed": psutil.virtual_memory().used,
-        "memoryFree": psutil.virtual_memory().free,
+        # virtual_memory().free means a different thing. I use total - used
+        "memoryFree": psutil.virtual_memory().total - psutil.virtual_memory().used,
         "swapUsed": psutil.swap_memory().used,
-        "swapFree": psutil.swap_memory().free
+        "swapFree": psutil.swap_memory().free  # it's ok to used wap_memory().free for swap
     }
 
 
