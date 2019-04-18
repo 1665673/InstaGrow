@@ -321,15 +321,15 @@ def get_droplet_status_summary():
     except:
         pass
     try:
-        memory = re.search(r"Mem[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-        memory_used = float(memory.group(1))
+        memory = re.search(r"Mem[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
         memory_free = float(memory.group(2))
+        memory_used = float(memory.group(3))
     except:
         pass
     try:
-        swap = re.search(r"Swap[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-        swap_used = float(swap.group(1))
+        swap = re.search(r"Swap[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
         swap_free = float(swap.group(2))
+        swap_used = float(swap.group(3))
     except:
         pass
     return {
