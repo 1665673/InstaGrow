@@ -55,41 +55,38 @@ class Server(BaseHTTPRequestHandler):
         self.send_header("Content-type", content_type)
         self.end_headers()
 
-        parts = re.search("/([^/]+)/([^/]+)(/([^/]+))?", self.path)
+        parts = re.search(r"/([^/]+)(/([^/]+))?(/([^/]+))?", self.path)
+        message = "invalid-url"
         result = {
-            "result": "no result"
+            "result": message
         }
         if parts:
             parts = parts.groups()
-            if len(parts) > 2:
-                action = parts[0]
-                instance = parts[1]
-                arguments = None
-                if len(parts) == 4:
-                    arguments = parts[3]
-
-                try:
-                    if action == "login":
-                        login_script(instance)
-                    elif action == "start":
-                        start_script(instance, arguments.split('+'))
-                    elif action == "stop":
-                        stop_script(instance)
-                    elif action == "restart":
-                        restart_script(instance)
-                    else:
-                        pass
-                    message = "success"
-                except Exception as e:
-                    message = str(e)
-            else:
-                message = "not-enough-url-arguments"
+            action = parts[0]
+            instance = parts[2]
+            arguments = parts[4]
+            try:
+                if action == "status":
+                    message = droplet_status()
+                elif action == "login" and instance:
+                    message = login_script(instance)
+                elif action == "start" and instance and arguments:
+                    message = start_script(instance, arguments.split('+'))
+                elif action == "stop" and instance:
+                    message = stop_script(instance)
+                elif action == "restart" and instance:
+                    message = restart_script(instance)
+                else:
+                    message = "invalid-arguments"
+            except Exception as e:
+                message = str(e)
         else:
             message = "invalid-url"
 
         result["result"] = message
+        buffer = json.dumps(result)
 
-        return bytes(json.dumps(result), "UTF-8")
+        return bytes(buffer, "UTF-8")
 
 
 #
@@ -113,6 +110,14 @@ def printt(*av, **kw):
     print(int(time.time()), *av, **kw)
 
 
+def droplet_status():
+    return {
+        "_id": _id,
+        "status": get_droplet_status_summary(),
+        "scripts": get_droplet_scripts_summary()
+    }
+
+
 def login_script(instance):
     if not instance:
         raise Exception("no-instance")
@@ -120,6 +125,7 @@ def login_script(instance):
         raise Exception("instance-already-exists")
     argv = ["login.py", "-q", "-ap", "-s", "-i", instance, "-g"]
     run_script(instance, "__LOGIN__", argv)
+    return "success"
 
 
 # arguments is a list consumed by subprocess.Popen
@@ -153,7 +159,7 @@ def start_script(instance, arguments):
         arguments += ["-o", _id]
     # if "-g" not in arguments and "--gui" not in arguments:
     #     arguments += ["-g"]
-    run_script(instance, username, arguments)
+    return run_script(instance, username, arguments)
 
 
 def stop_script(instance):
@@ -169,9 +175,10 @@ def stop_script(instance):
     # process.terminate()
     # os.kill(process.pid, signal.SIGINT)
     process.send_signal(signal.SIGINT)
-    return _scripts.pop(instance, None)
+    _scripts.pop(instance, None)
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
+    return "success"
 
 
 def restart_script(instance):
@@ -180,6 +187,7 @@ def restart_script(instance):
     start_script(instance, process_info["arguments"])
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
+    return "success"
 
 
 def run_script(instance, username, argv):
@@ -208,6 +216,7 @@ def run_script(instance, username, argv):
         raise
     # output = process.stdout.read()
     # log("output from terminal:\n" + str(output, "utf-8"), title="GIT  ")
+    return "success"
 
 
 #
@@ -308,13 +317,14 @@ def get_droplet_status_summary():
     # get script status (summary string), memory, cpu usage
     process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True, stdout=subprocess.PIPE)
     summary = process.stdout.read().decode("utf-8")
-    process.kill()
+    process.terminate()
     # parse status summary
     cpu_idle = 0
     memory_used = 0
     memory_free = 0
     swap_used = 0
     swap_free = 0
+
     try:
         cpu = re.search(r"Cpu[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
         cpu_idle = float(cpu.group(4))
@@ -346,13 +356,16 @@ def get_droplet_scripts_summary():
     global _scripts
     # get script abstracts
     scripts = []
-    for instance in _scripts:
-        scripts.append({
-            "instance": instance,
-            "arguments": _scripts[instance]["arguments"],
-            "username": _scripts[instance]["username"],
-            "startTime": _scripts[instance]["start-time"]
-        })
+    try:
+        for instance in _scripts:
+            scripts.append({
+                "instance": instance,
+                "arguments": _scripts[instance]["arguments"],
+                "username": _scripts[instance]["username"],
+                "startTime": _scripts[instance]["start-time"]
+            })
+    except:
+        pass
     return scripts
 
 
