@@ -325,7 +325,8 @@ def get_droplet_status_summary():
                                stderr=subprocess.PIPE,
                                stdin=subprocess.PIPE)
     summary = process.stdout.read().decode("utf-8")
-    process.terminate()
+    process.wait()
+    process.kill()
     # parse status summary
     cpu_idle = 0
     memory_used = 0
