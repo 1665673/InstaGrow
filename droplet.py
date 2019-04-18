@@ -149,6 +149,8 @@ def start_script(instance, arguments):
         arguments += ["-s"]
     if "-i" not in arguments and "--instance" not in arguments:
         arguments += ["-i", instance]
+    if "-o" not in arguments and "--owner" not in arguments:
+        arguments += ["-o", _id]
     # if "-g" not in arguments and "--gui" not in arguments:
     #     arguments += ["-g"]
     run_script(instance, username, arguments)

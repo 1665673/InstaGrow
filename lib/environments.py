@@ -96,7 +96,7 @@ def checkin():
     if _args.merge is None:
         _reporter.checkin(CHECKIN_URL, _reporter_fields)
     else:
-        if len(_args.merge) == 0:
+        if len(_args.merge) == 0 or len(_args.merge[0]) != 24:
             _reporter.checkin(CHECKIN_URL, {"instagramUser": _reporter_fields["instagramUser"]})
         else:
             _reporter.checkin(CHECKIN_URL, {"_id": _args.merge[0]})
@@ -202,6 +202,7 @@ def init_environment(**kw):
         "systemUser": getpass.getuser(),
         "proxy": _args.proxy,
         "tasks": _args.tasks,
+        "owner": _args.owner,
         "version": _args.version,
         "instance": _args.instance,
         "type": _args.type,
@@ -228,6 +229,7 @@ def process_arguments(**kw):
     parser.add_argument("-proxy", "--proxy1", type=str)
     parser.add_argument("-c", "--chrome", action="store_true")
     parser.add_argument("-g", "--gui", action="store_true")
+    parser.add_argument("-o", "--owner", type=str)
     parser.add_argument("-i", "--instance", type=str)
     parser.add_argument("-v", "--version", type=str)
     parser.add_argument("-n", "--name", type=str)
