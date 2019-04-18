@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import re
 import os
+import io
 import signal
 import subprocess
 # import sys
@@ -190,6 +191,10 @@ def restart_script(instance):
     return "success"
 
 
+def fileno():
+    return 1
+
+
 def run_script(instance, username, argv):
     global _scripts
     # n = os.fork()
@@ -315,7 +320,10 @@ def report_to_main_server():
 
 def get_droplet_status_summary():
     # get script status (summary string), memory, cpu usage
-    process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True, stdout=subprocess.PIPE)
+    process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True,
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               stdin=subprocess.PIPE)
     summary = process.stdout.read().decode("utf-8")
     process.terminate()
     # parse status summary
