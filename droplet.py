@@ -4,6 +4,7 @@ from http.server import BaseHTTPRequestHandler
 import json
 import re
 import os
+import sys
 # import io
 import psutil
 import signal
@@ -68,8 +69,14 @@ class Server(BaseHTTPRequestHandler):
             instance = parts[2]
             arguments = parts[4]
             try:
-                if action == "status":
+                if action == "droplet-status":
                     message = droplet_status()
+                elif action == "droplet-update":
+                    message = droplet_update()
+                elif action == "droplet-restart":
+                    message = droplet_restart()
+                elif action == "droplet-update-restart":
+                    message = droplet_update_restart()
                 elif action == "login" and instance:
                     message = login_script(instance)
                 elif action == "start" and instance and arguments:
@@ -118,6 +125,33 @@ def droplet_status():
         "status": get_droplet_status_summary(),
         "scripts": get_droplet_scripts_summary()
     }
+
+
+def droplet_update():
+    process = subprocess.Popen(["git", "pull"],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE,
+                               stdin=subprocess.PIPE)
+    try:
+        outs, errs = process.communicate(timeout=15)
+    except:
+        process.kill()
+        outs, errs = process.communicate()
+    return outs.decode("utf-8") + errs.decode("utf-8")
+
+
+def droplet_restart():
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
+
+
+def droplet_update_restart():
+    droplet_update()
+    droplet_restart()
+    # return {
+    #     "dropletUpdate": droplet_update(),
+    #     "dropletRestart": droplet_restart()
+    # }
 
 
 def login_script(instance):
@@ -190,10 +224,6 @@ def restart_script(instance):
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
     return "success"
-
-
-def fileno():
-    return 1
 
 
 def run_script(instance, username, argv):
