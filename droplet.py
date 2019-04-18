@@ -203,9 +203,9 @@ def stop_script(instance):
     if not instance or instance not in _scripts:
         raise Exception("no-instance or invalid instance")
     start_time = _scripts[instance]["start-time"]
-    if start_time + 30 < int(time.time()):
+    if start_time + 30 > int(time.time()):
         raise Exception("please don't stop an instance within 30 seconds of starting. wait for another: {} seconds"
-                        .format(int(time.time()) - start_time))
+                        .format(start_time + 30 - int(time.time())))
     process = _scripts[instance]["process"]
     # process.kill()
     # process.terminate()
