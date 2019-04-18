@@ -61,7 +61,8 @@ class Server(BaseHTTPRequestHandler):
         parts = re.search(r"/([^/]+)(/([^/]+))?(/([^/]+))?", self.path)
         message = "invalid-url"
         result = {
-            "result": message
+            "result": "fail",
+            "message": message
         }
         if parts:
             parts = parts.groups()
@@ -74,25 +75,31 @@ class Server(BaseHTTPRequestHandler):
                 elif action == "droplet-update":
                     message = droplet_update()
                 elif action == "droplet-restart":
-                    message = droplet_restart()
+                    droplet_restart()
                 elif action == "droplet-update-restart":
-                    message = droplet_update_restart()
+                    droplet_update_restart()
                 elif action == "login" and instance:
-                    message = login_script(instance)
+                    script = login_script(instance)
+                    message = "login started. start time: {}".format(script["start-time"])
                 elif action == "start" and instance and arguments:
-                    message = start_script(instance, arguments.split('+'))
+                    script = start_script(instance, arguments.split('+'))
+                    message = "script started. start time: {}".format(script["start-time"])
                 elif action == "stop" and instance:
-                    message = stop_script(instance)
+                    script = stop_script(instance)
+                    message = "script stopped. start time: {0}, stop time: {1}" \
+                        .format(script["start-time"], int(time.time()))
                 elif action == "restart" and instance:
-                    message = restart_script(instance)
+                    script = restart_script(instance)
+                    message = "script restarted. start time: {}".format(script["start-time"])
                 else:
                     message = "invalid-arguments"
+                result["result"] = "success"
             except Exception as e:
                 message = str(e)
         else:
             message = "invalid-url"
 
-        result["result"] = message
+        result["message"] = message
         buffer = json.dumps(result)
 
         return bytes(buffer, "UTF-8")
@@ -160,8 +167,7 @@ def login_script(instance):
     if instance in _scripts:
         raise Exception("instance-already-exists")
     argv = ["login.py", "-q", "-ap", "-s", "-i", instance, "-g"]
-    run_script(instance, "__LOGIN__", argv)
-    return "success"
+    return run_script(instance, "__LOGIN__", argv)
 
 
 # arguments is a list consumed by subprocess.Popen
@@ -206,7 +212,8 @@ def stop_script(instance):
     if start_time + 30 > int(time.time()):
         raise Exception("please don't stop an instance within 30 seconds of starting. wait for another: {} seconds"
                         .format(start_time + 30 - int(time.time())))
-    process = _scripts[instance]["process"]
+    script = _scripts[instance]
+    process = script["process"]
     # process.kill()
     # process.terminate()
     # os.kill(process.pid, signal.SIGINT)
@@ -214,16 +221,15 @@ def stop_script(instance):
     _scripts.pop(instance, None)
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
-    return "success"
+    return script
 
 
 def restart_script(instance):
     printt("[restart-script] instance:", instance)
-    process_info = stop_script(instance)
-    start_script(instance, process_info["arguments"])
+    script = stop_script(instance)
+    return start_script(instance, script["arguments"])
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
-    return "success"
 
 
 def run_script(instance, username, argv):
@@ -241,18 +247,20 @@ def run_script(instance, username, argv):
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
                                    stdin=subprocess.PIPE)
-        _scripts[instance] = {
+
+        script = {
             "username": username,
             "arguments": argv,
             "process": process,
             "start-time": int(time.time())
         }
+        _scripts[instance] = script
+        return script
     except Exception as e:
         printt(str(e))
         raise
     # output = process.stdout.read()
     # log("output from terminal:\n" + str(output, "utf-8"), title="GIT  ")
-    return "success"
 
 
 #

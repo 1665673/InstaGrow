@@ -210,6 +210,8 @@ def init_environment(**kw):
         #
     })
 
+    print(_reporter_fields)
+
     # also put all commandline arguments into report fields
     # so _reporter_fields includes:
     #   (1) all commandline arguments, including these adjusted by "--pull" and "env.config"
