@@ -310,14 +310,14 @@ def get_droplet_status_summary():
     summary = process.stdout.read().decode("utf-8")
     process.kill()
     # parse status summary
-    cpu_idle = None
-    memory_used = None
-    memory_free = None
-    swap_used = None
-    swap_free = None
+    cpu_idle = 0
+    memory_used = 0
+    memory_free = 0
+    swap_used = 0
+    swap_free = 0
     try:
         cpu = re.search(r"Cpu[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-        cpu_idle = cpu.group(4)
+        cpu_idle = float(cpu.group(4))
     except:
         pass
     try:
