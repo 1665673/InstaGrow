@@ -369,7 +369,8 @@ def _summary_all_scripts():
                 "username": _scripts[instance]["username"],
                 "startTime": _scripts[instance]["start-time"],
                 "isRunning": process.poll() is None,
-                "rss": psutil.Process(process.pid).memory_info().rss
+                # "rss": psutil.Process(process.pid).memory_info().rss,
+                "rss": _get_memory_usage(process.pid)
             })
     except Exception as e:
         printt("error in _summary_all_scripts()" + str(e))
@@ -489,6 +490,20 @@ def _parse_script_arguments(argv):
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     return parser.parse_args(argv)
+
+
+def _get_memory_usage(pid):
+    rss = 0
+    try:
+        parent = psutil.Process(pid)
+        rss = parent.memory_info().rss
+        # try get memory usage of sub-processes
+        children = parent.children(recursive=True)
+        for child in children:
+            rss += child.memory_info().rss
+    except Exception as e:
+        print("error in _get_memory_usage(): " + str(e))
+    return rss
 
 
 #

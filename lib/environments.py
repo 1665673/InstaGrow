@@ -361,7 +361,8 @@ def log(buffer, title="LOG  ", account="messages"):
     #
     #   also report current memory usage at the same time
     #
-    rss = psutil.Process().memory_info().rss
+    rss = get_memory_usage()
+    # report
     try:
         _reporter.payload["attributes"]["rss"] = rss
         _reporter.send(buffer, account)
@@ -488,6 +489,24 @@ def upload_cookies(session):
     # logfolder = "~/InstaPy/logs/" + username + "/"
     # cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
     _reporter.update({"cookies": session.browser.get_cookies()})
+
+
+def get_memory_usage():
+    rss = 0
+    try:
+        parent = psutil.Process()
+        rss = parent.memory_info().rss
+        # try get memory usage of sub-processes
+        children = parent.children(recursive=True)
+        for child in children:
+            rss += child.memory_info().rss
+    except Exception as e:
+        sys.stdout.write(str(e))
+    return rss
+    #
+    # pid of geckodriver
+    # _session.browser.service.process.pid
+    #
 
 
 #
