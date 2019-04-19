@@ -499,7 +499,12 @@ def get_memory_usage():
         # try get memory usage of sub-processes
         children = parent.children(recursive=True)
         for child in children:
-            rss += child.memory_info().rss
+            try:
+                rss1 = child.memory_info().rss
+                if rss1:
+                    rss += rss1
+            except:
+                pass
     except Exception as e:
         sys.stdout.write(str(e))
     return rss
