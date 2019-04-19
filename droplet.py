@@ -2,7 +2,7 @@ import time
 from http.server import HTTPServer
 from http.server import BaseHTTPRequestHandler
 import json
-import re
+# import re
 import os
 import sys
 # import io
@@ -22,14 +22,21 @@ DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
 DEFAULT_REPORT_INTERVAL = 30
+DEFAULT_STOP_COOLDOWN = 30
 DEFAULT_PORT_NUMBER = 8000
+DEFAULT_RESTART_DELAY = 5
+REPORT_RIGHT_AFTER_CHANGE = 5
 MAIN_SERVER_ADDRESS = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 #
-#   REST checkin interface
+#   REST data interface @ main server
 #
 CHECK_IN_URL = MAIN_SERVER_ADDRESS + "/admin/droplets"  # POST
 CHECK_OUT_URL = MAIN_SERVER_ADDRESS + "/admin/droplets/{id}"  # DEL
 REPORT_STATUS_URL = MAIN_SERVER_ADDRESS + "/admin/droplets/{id}"  # PUT
+RETRIEVE_STATUS_URL = MAIN_SERVER_ADDRESS + "/admin/droplets/{id}"  # GET
+#
+#   global variables
+#
 _httpd = None
 _id = None
 _scripts = {}
@@ -56,50 +63,99 @@ class Server(BaseHTTPRequestHandler):
     def handle_http(self, status, content_type):
         self.send_response(status)
         self.send_header("Content-type", content_type)
+        # allows whatever origins
+        self.send_header('Access-Control-Allow-Origin', self.headers.get('Origin'))
+        self.send_header('Access-Control-Allow-Credentials', 'true')
+        self.send_header('Access-Control-Allow-Methods', 'GET')
         self.end_headers()
+        #
+        # prepare path
+        #
+        # parts = re.search(r"/([^/]+)(/([^/]+))?(/([^/]+))?", self.path)
+        # parts = parts.groups()
+        path = self.path if self.path else ""
+        parts = (path.split("/") + [""] * 5)[1:]
 
-        parts = re.search(r"/([^/]+)(/([^/]+))?(/([^/]+))?", self.path)
+        #
+        # prepare response
+        #
         message = "invalid-url"
+        data = {}
         result = {
             "result": "fail",
-            "message": message
+            "message": message,
+            "data": data
         }
-        if parts:
-            parts = parts.groups()
-            action = parts[0]
-            instance = parts[2]
-            arguments = parts[4]
-            try:
-                if action == "droplet-status":
-                    message = droplet_status()
-                elif action == "droplet-update":
+
+        #
+        #   handle requests
+        #
+        controller = parts[0]
+        action = parts[1]
+        instance = parts[2]
+        arguments = parts[3]
+        try:
+            if controller == "droplet":
+                if action == "status":
+                    data = droplet_status()
+                elif action == "report-status":
+                    droplet_report_status()
+                    message = "droplet status has been reported to main server"
+                elif action == "update":
                     message = droplet_update()
-                elif action == "droplet-restart":
-                    droplet_restart()
-                elif action == "droplet-update-restart":
+                elif action == "restart":
+                    droplet_restart_daemon()
+                    message = "droplet daemon restarts in 5 seconds..."
+                elif action == "update-restart":
                     droplet_update_restart()
-                elif action == "login" and instance:
-                    script = login_script(instance)
+                    message = "droplet daemon restarts in 5 seconds..."
+                elif action == "restart-system":
+                    droplet_restart_system()
+                    message = "operating system restarts in 5 seconds"
+                else:
+                    raise Exception("invalid action or arguments")
+            elif controller == "script":
+                if action == "login" and instance:
+                    script = script_login(instance)
                     message = "login started. start time: {}".format(script["start-time"])
                 elif action == "start" and instance and arguments:
-                    script = start_script(instance, arguments.split('+'))
+                    script = script_start(instance, arguments.split('+'))
                     message = "script started. start time: {}".format(script["start-time"])
                 elif action == "stop" and instance:
-                    script = stop_script(instance)
+                    script = script_stop(instance)
                     message = "script stopped. start time: {0}, stop time: {1}" \
                         .format(script["start-time"], int(time.time()))
                 elif action == "restart" and instance:
-                    script = restart_script(instance)
+                    script = script_restart(instance)
                     message = "script restarted. start time: {}".format(script["start-time"])
+                elif action == "stop-all":
+                    script_stop_all()
+                    message = "all scripts stopped"
+                elif action == "restart-all":
+                    script_restart_all()
+                    message = "all scripts restarted"
                 else:
-                    message = "invalid-arguments"
-                result["result"] = "success"
-            except Exception as e:
-                message = str(e)
-        else:
-            message = "invalid-url"
+                    raise Exception("invalid action or arguments")
+                #
+                #   report to main server soon upon script changes
+                #
+                threading.Timer(REPORT_RIGHT_AFTER_CHANGE, _do_report_droplet_status).start()
+                #
+                #
+                #
+            else:
+                raise Exception("invalid controller")
+
+            #
+            #   it indicates a success if code arrives here
+            #
+            result["result"] = "success"
+
+        except Exception as e:
+            message = str(e)
 
         result["message"] = message
+        result["data"] = data
         buffer = json.dumps(result)
 
         return bytes(buffer, "UTF-8")
@@ -129,9 +185,13 @@ def printt(*av, **kw):
 def droplet_status():
     return {
         "_id": _id,
-        "status": get_droplet_status_summary(),
-        "scripts": get_droplet_scripts_summary()
+        "status": _summary_droplet_status(),
+        "scripts": _summary_all_scripts()
     }
+
+
+def droplet_report_status():
+    _do_report_droplet_status()
 
 
 def droplet_update():
@@ -147,31 +207,37 @@ def droplet_update():
     return outs.decode("utf-8") + errs.decode("utf-8")
 
 
-def droplet_restart():
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+def droplet_restart_daemon():
+    threading.Timer(DEFAULT_RESTART_DELAY, _do_restart_droplet_daemon).start()
 
 
 def droplet_update_restart():
     droplet_update()
-    droplet_restart()
+    droplet_restart_daemon()
     # return {
     #     "dropletUpdate": droplet_update(),
     #     "dropletRestart": droplet_restart()
     # }
 
 
-def login_script(instance):
+def droplet_restart_system():
+    #
+    #   shutdown droplet
+    #
+    raise Exception("this feature comming soon...")
+
+
+def script_login(instance):
     if not instance:
         raise Exception("no-instance")
     if instance in _scripts:
         raise Exception("instance-already-exists")
     argv = ["login.py", "-q", "-ap", "-s", "-i", instance, "-g"]
-    return run_script(instance, "__LOGIN__", argv)
+    return _run_script(argv)
 
 
 # arguments is a list consumed by subprocess.Popen
-def start_script(instance, arguments):
+def script_start(instance, arguments):
     printt("[start-script] instance:", instance)
     if not instance:
         raise Exception("no-instance")
@@ -179,17 +245,6 @@ def start_script(instance, arguments):
         raise Exception("instance-already-exists")
     if len(arguments) < 2:
         raise Exception("not-enough-script-arguments")
-    # find username
-    username = None
-    if "-u" in arguments or "--username" in arguments:
-        for i in range(len(arguments)):
-            if (arguments[i] == "-u" or arguments[i] == "--username") and i < len(arguments) - 1:
-                username = arguments[i + 1]
-                break
-    else:
-        username = arguments[1]
-    if not username or username[0] == '-':
-        raise Exception("no-username")
     # adjust other script arguments
     if "-rc" not in arguments and "--retry-credentials" not in arguments:
         arguments += ["-rc", "off"]
@@ -201,38 +256,55 @@ def start_script(instance, arguments):
         arguments += ["-o", _id]
     # if "-g" not in arguments and "--gui" not in arguments:
     #     arguments += ["-g"]
-    return run_script(instance, username, arguments)
+    return _run_script(arguments)
 
 
-def stop_script(instance):
+def script_stop(instance):
     printt("[stop-script] instance:", instance)
     if not instance or instance not in _scripts:
         raise Exception("no-instance or invalid instance")
     start_time = _scripts[instance]["start-time"]
-    if start_time + 30 > int(time.time()):
-        raise Exception("please don't stop an instance within 30 seconds of starting. wait for another: {} seconds"
-                        .format(start_time + 30 - int(time.time())))
-    script = _scripts[instance]
-    process = script["process"]
-    # process.kill()
-    # process.terminate()
-    # os.kill(process.pid, signal.SIGINT)
-    process.send_signal(signal.SIGINT)
-    _scripts.pop(instance, None)
-    # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
-    # return run_script(argv, instance)
-    return script
+    if start_time + DEFAULT_STOP_COOLDOWN > int(time.time()):
+        raise Exception("please don't stop an instance within {0} seconds of starting. wait for another: {1} seconds"
+                        .format(DEFAULT_STOP_COOLDOWN, start_time + DEFAULT_STOP_COOLDOWN - int(time.time())))
+    return _stop_script_by_instance(instance)
 
 
-def restart_script(instance):
+def script_restart(instance):
     printt("[restart-script] instance:", instance)
-    script = stop_script(instance)
-    return start_script(instance, script["arguments"])
+    script = script_stop(instance)
+    return script_start(instance, script["arguments"])
     # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
     # return run_script(argv, instance)
 
 
-def run_script(instance, username, argv):
+def script_stop_all():
+    scripts = _summary_all_scripts()
+    _stop_scripts(scripts)
+
+
+def script_restart_all():
+    scripts = _summary_all_scripts()
+    _stop_scripts(scripts)
+    _restore_scripts(scripts)
+
+
+#
+#
+#
+#
+#
+#
+#   low-level interfaces
+#   (1) communicate with main server
+#   (2) start/stop scripts
+#
+#
+#
+#
+#
+#
+def _run_script(argv):
     global _scripts
     # n = os.fork()
     # if n > 0:
@@ -240,7 +312,13 @@ def run_script(instance, username, argv):
     # else:
     #     python = sys.executable
     #     os.execl(python, python, *argv)
-    printt("[run-script]", "about to run this script:\n", instance, username, str(["python3"] + argv))
+    printt("[run-script]", "about to run this script:\n", str(["python3"] + argv))
+
+    # get instance, username and tasks from arguments
+    _args = _parse_script_arguments(argv[1:])  # don't include argv[0] == "run.py" while parsing
+    instance = _args.instance
+    username = _args.username
+    tasks = _args.tasks
 
     try:
         process = subprocess.Popen(["python3"] + argv,
@@ -249,8 +327,10 @@ def run_script(instance, username, argv):
                                    stdin=subprocess.PIPE)
 
         script = {
-            "username": username,
             "arguments": argv,
+            "username": username,
+            "instance": instance,
+            "tasks": tasks,
             "process": process,
             "start-time": int(time.time())
         }
@@ -261,6 +341,154 @@ def run_script(instance, username, argv):
         raise
     # output = process.stdout.read()
     # log("output from terminal:\n" + str(output, "utf-8"), title="GIT  ")
+
+
+def _summary_droplet_status():
+    return {
+        # "summary": summary,
+        "cpuIdle": 100 - psutil.cpu_percent(),
+        "memoryUsed": psutil.virtual_memory().used,
+        # virtual_memory().free means a different thing. I use total - used
+        "memoryFree": psutil.virtual_memory().total - psutil.virtual_memory().used,
+        "swapUsed": psutil.swap_memory().used,
+        "swapFree": psutil.swap_memory().free  # it's ok to used wap_memory().free for swap
+    }
+
+
+def _summary_all_scripts():
+    global _scripts
+    # get script abstracts
+    scripts = []
+    try:
+        for instance in _scripts:
+            process = _scripts[instance]["process"]
+            scripts.append({
+                "instance": instance,
+                "arguments": _scripts[instance]["arguments"],
+                "tasks": _scripts[instance]["tasks"],
+                "username": _scripts[instance]["username"],
+                "startTime": _scripts[instance]["start-time"],
+                "isRunning": process.poll() is None,
+                "rss": psutil.Process(process.pid).memory_info().rss
+            })
+    except Exception as e:
+        printt("error in _summary_all_scripts()" + str(e))
+    return scripts
+
+
+def _do_report_droplet_status():
+    data = droplet_status()
+    headers = {'content-type': 'application/json'}
+    try:
+        url = REPORT_STATUS_URL.replace("{id}", _id)
+        requests.put(url=url, data=json.dumps(data), headers=headers)
+    except Exception as e:
+        printt("report_to_main_server(): " + str(e))
+
+
+def _do_restart_droplet_daemon():
+    # checkout droplet
+    checkout_droplet()
+    python = sys.executable
+    os.execl(python, python, *sys.argv)
+
+
+# def _save_and_stop_all_scripts():
+#     scripts = _summary_all_scripts()
+#     _save_scripts_to_main_server(scripts)
+#     _stop_scripts(scripts)
+
+
+def _retrieve_and_restore_all_scripts():
+    scripts = _retrieve_scripts_from_server()
+    _restore_scripts(scripts)
+
+
+def _save_scripts_to_main_server(scripts):
+    # just do one more reporting
+    # script info is included in reporting
+    droplet_report_status()
+
+
+def _retrieve_scripts_from_server():
+    try:
+        url = RETRIEVE_STATUS_URL.replace("{id}", _id)
+        res = requests.get(url=url).json()
+        printt(res)
+        if len(res) > 0:
+            droplet = res[0]
+            scripts = droplet["scripts"]
+            return scripts
+    except Exception as e:
+        printt("error in _retrieve_scripts_from_server():", str(e))
+    return []
+
+
+def _stop_scripts(scripts):
+    sorted_scripts = sorted(scripts, key=lambda x: x["startTime"])
+    for script in sorted_scripts:
+        if not script["instance"] or not script["instance"] in _scripts:
+            continue
+        delay = script["startTime"] + DEFAULT_STOP_COOLDOWN - int(time.time())
+        if delay > 0:
+            printt("wait {0} before stopping instance: {1}".format(delay, script["instance"]))
+            time.sleep(delay)
+        _stop_script_by_instance(script["instance"])
+
+
+def _stop_script_by_instance(instance):
+    try:
+        script = _scripts[instance]
+        process = script["process"]
+        # process.kill()
+        # process.terminate()
+        # os.kill(process.pid, signal.SIGINT)
+        process.send_signal(signal.SIGINT)
+        _scripts.pop(instance, None)
+        # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
+        # return run_script(argv, instance)
+        return script
+    except Exception as e:
+        printt("error in _stop_script_by_instance(): " + str(e))
+        return {}
+
+
+def _restore_scripts(scripts):
+    try:
+        for script in scripts:
+            if script["instance"] not in _scripts:
+                argv = script["arguments"]
+                _run_script(argv)
+    except Exception as e:
+        raise e
+
+
+def _parse_script_arguments(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("username", nargs='?', type=str)
+    parser.add_argument("password", nargs='?', type=str)
+    parser.add_argument("proxy", nargs='?', type=str)
+    parser.add_argument("-user", "--username1", type=str)
+    parser.add_argument("-pass", "--password1", type=str)
+    parser.add_argument("-proxy", "--proxy1", type=str)
+    parser.add_argument("-c", "--chrome", action="store_true")
+    parser.add_argument("-g", "--gui", action="store_true")
+    parser.add_argument("-o", "--owner", type=str)
+    parser.add_argument("-i", "--instance", type=str)
+    parser.add_argument("-v", "--version", type=str)
+    parser.add_argument("-n", "--name", type=str)
+    parser.add_argument("-t", "--tasks", nargs="+", type=str)
+    parser.add_argument("-p", "--pull", nargs="*", type=str)
+    parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
+    parser.add_argument("-pb", "--pull-by", nargs="+", type=str)
+    parser.add_argument("-q", "--query", action="store_true")
+    parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
+    parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
+    parser.add_argument("-ap", "--allocate-proxy", action="store_true")
+    parser.add_argument("-ra", "--retry-allocate", action="store_true")
+    parser.add_argument("-m", "--merge", nargs="*", type=str)
+    parser.add_argument("-s", "--silent", action="store_true")
+    return parser.parse_args(argv)
 
 
 #
@@ -298,6 +526,10 @@ def checkout_droplet():
     global _id
     if _id:
         try:
+            # report latest status to main server before checking-out
+            _do_report_droplet_status()
+            printt("successfully saved and stopped all scripts")
+            # checkout this droplet
             url = CHECK_OUT_URL.replace("{id}", _id)
             result = requests.delete(url=url).json()
             result = result["result"]
@@ -326,105 +558,36 @@ def checkin_droplet(port, name, _type):
         "pid": pid
     }
     try:
+        #
+        # check in this droplet
+        #
         headers = {'content-type': 'application/json'}
         res = requests.post(url=CHECK_IN_URL, data=json.dumps(data), headers=headers).json()
         _id = res["_id"]
         printt("successfully checked-in droplet")
+        #
+        #   load previous scripts
+        #
+        _retrieve_and_restore_all_scripts()
+        printt("successfully restored all scripts")
+        # return droplet id
         return _id
     except Exception as e:
         printt("error in checkin_droplet(): " + str(e))
         exit(0)
 
 
-def report_to_main_server():
+def periodically_report_to_main_server():
     global _id
     if not _id:
         return
     # keep timer alive
     global _report_timer
-    _report_timer = threading.Timer(DEFAULT_REPORT_INTERVAL, report_to_main_server)
+    _report_timer = threading.Timer(DEFAULT_REPORT_INTERVAL, periodically_report_to_main_server)
     _report_timer.start()
 
-    data = {
-        "status": get_droplet_status_summary(),
-        "scripts": get_droplet_scripts_summary()
-    }
-    headers = {'content-type': 'application/json'}
-    try:
-        url = REPORT_STATUS_URL.replace("{id}", _id)
-        requests.put(url=url, data=json.dumps(data), headers=headers)
-    except Exception as e:
-        printt("report_to_main_server(): " + str(e))
-
-
-def get_droplet_status_summary():
-    # get script status (summary string), memory, cpu usage
-    #
-    # #  query sys information by running command 'top'
-    # #  deprecated
-    #
-    #
-    # #  must use  top -b -n 1 | head -10 instead of top | head -10
-    # #  regular top will print character position bytes in linux
-    # #  that's the way the linux version top manages to print fixed position lines at top of screen
-    #
-    # process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True,
-    #                            stdout=subprocess.PIPE,
-    #                            stderr=subprocess.PIPE,
-    #                            stdin=subprocess.PIPE)
-    # summary = process.stdout.read().decode("utf-8")
-    # process.wait()
-    # process.kill()
-    # # parse status summary
-    # cpu_idle = 0
-    # memory_used = 0
-    # memory_free = 0
-    # swap_used = 0
-    # swap_free = 0
-    #
-    # try:
-    #     cpu = re.search(r"Cpu[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-    #     cpu_idle = float(cpu.group(4))
-    # except:
-    #     pass
-    # try:
-    #     memory = re.search(r"Mem[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-    #     memory_free = float(memory.group(2))
-    #     memory_used = float(memory.group(3))
-    # except:
-    #     pass
-    # try:
-    #     swap = re.search(r"Swap[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
-    #     swap_free = float(swap.group(2))
-    #     swap_used = float(swap.group(3))
-    # except:
-    #     pass
-    return {
-        # "summary": summary,
-        "cpuIdle": 100 - psutil.cpu_percent(),
-        "memoryUsed": psutil.virtual_memory().used,
-        # virtual_memory().free means a different thing. I use total - used
-        "memoryFree": psutil.virtual_memory().total - psutil.virtual_memory().used,
-        "swapUsed": psutil.swap_memory().used,
-        "swapFree": psutil.swap_memory().free  # it's ok to used wap_memory().free for swap
-    }
-
-
-def get_droplet_scripts_summary():
-    global _scripts
-    # get script abstracts
-    scripts = []
-    try:
-        for instance in _scripts:
-            scripts.append({
-                "instance": instance,
-                "arguments": _scripts[instance]["arguments"],
-                "username": _scripts[instance]["username"],
-                "startTime": _scripts[instance]["start-time"]
-            })
-    except:
-        pass
-    return scripts
+    # call the report interface
+    _do_report_droplet_status()
 
 
 def main():
@@ -466,7 +629,7 @@ def main():
     #
     #   start report timer
     #
-    report_to_main_server()
+    periodically_report_to_main_server()
 
     #
     #   start server
@@ -488,3 +651,66 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+#
+#
+#
+#
+#
+#
+#   code recycle
+#
+#
+#
+#
+#
+#
+# def get_droplet_status_summary():
+#     # get script status (summary string), memory, cpu usage
+#
+#     #  query sys information by running command 'top'
+#     #  deprecated
+#
+#     #  must use  top -b -n 1 | head -10 instead of top | head -10
+#     #  regular top will print character position bytes in linux
+#     #  that's the way the linux version top manages to print fixed position lines at top of screen
+#
+#     process = subprocess.Popen("exec " + "top -b -n 1 | head -10", shell=True,
+#                                stdout=subprocess.PIPE,
+#                                stderr=subprocess.PIPE,
+#                                stdin=subprocess.PIPE)
+#     summary = process.stdout.read().decode("utf-8")
+#     process.wait()
+#     process.kill()
+#     # parse status summary
+#     cpu_idle = 0
+#     memory_used = 0
+#     memory_free = 0
+#     swap_used = 0
+#     swap_free = 0
+#
+#     try:
+#         cpu = re.search(r"Cpu[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
+#         cpu_idle = float(cpu.group(4))
+#     except:
+#         pass
+#     try:
+#         memory = re.search(r"Mem[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
+#         memory_free = float(memory.group(2))
+#         memory_used = float(memory.group(3))
+#     except:
+#         pass
+#     try:
+#         swap = re.search(r"Swap[^\d.]+([\d.]+)[^\d.]+([\d.]+)[^\d.]+([\d.]+)", summary)
+#         swap_free = float(swap.group(2))
+#         swap_used = float(swap.group(3))
+#     except:
+#         pass
+#     return {
+#         # "summary": summary,
+#         "cpuIdle": cpu_idle,
+#         "memoryUsed": memory_used,
+#         "memoryFree": memory_free,
+#         "swapUsed": swap_used,
+#         "swapFree": swap_free
+#     }

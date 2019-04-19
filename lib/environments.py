@@ -7,6 +7,7 @@ import argparse
 import json as _json
 from instapy.util import web_address_navigator
 import os
+import psutil
 # import pickle
 import subprocess
 from dotenv import load_dotenv, find_dotenv
@@ -357,8 +358,15 @@ def log(buffer, title="LOG  ", account="messages"):
     buffer = "%s[%d] %s" % ((title + " " if title else ""), int(time.time()), buffer)
     # reporter.StreamHub.stdout.write(buffer + "\n")
     sys.stdout.write(buffer + "\n")
-    if _reporter:
+    #
+    #   also report current memory usage at the same time
+    #
+    rss = psutil.Process().memory_info().rss
+    try:
+        _reporter.payload["attributes"]["rss"] = rss
         _reporter.send(buffer, account)
+    except Exception as e:
+        sys.stdout.write("error in reporter: " + str(e))
 
 
 def info(buffer):

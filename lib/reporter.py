@@ -66,7 +66,7 @@ class Reporter:
         self.attributes = {}
         self.checkin_url = None
         self.access_url = None
-        self.payload = {"accounts": {}}
+        self.payload = {"accounts": {}, "attributes": {}, "retrieve": []}
         self.headers = {'content-type': 'application/json'}
 
     def __merge(self, array, account):
@@ -86,7 +86,7 @@ class Reporter:
         except Exception as e:
             pass
         finally:
-            self.payload = {"accounts": {}}
+            self.payload = {"accounts": {}, "attributes": {}, "retrieve": []}
 
     def checkin(self, url, attributes):
         self.attributes = attributes
