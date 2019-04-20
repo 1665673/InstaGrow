@@ -687,7 +687,10 @@ def main():
         _httpd = HTTPServer((args.address, args.port), Server)
         # _httpd.serve_forever()
         while _httpd_alive:
-            _httpd.handle_request()
+            try:
+                _httpd.handle_request()
+            except Exception as e:
+                printt("error in _httpd.handle_request(): ", str(e))
 
     except Exception as e:
         printt(str(e))
