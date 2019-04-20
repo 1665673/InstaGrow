@@ -18,12 +18,14 @@ from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv())
 
+VERSION = "1.01"
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
 DEFAULT_REPORT_INTERVAL = 30
 DEFAULT_STOP_COOLDOWN = 30
 DEFAULT_PORT_NUMBER = 8000
+DEFAULT_SHUTDOWN_DELAY = 5
 DEFAULT_RESTART_DELAY = 5
 REPORT_RIGHT_AFTER_CHANGE = 5
 MAIN_SERVER_ADDRESS = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -38,6 +40,7 @@ RETRIEVE_STATUS_URL = MAIN_SERVER_ADDRESS + "/admin/droplets/{id}"  # GET
 #   global variables
 #
 _httpd = None
+_httpd_alive = True
 _id = None
 _scripts = {}
 _report_timer = None
@@ -103,6 +106,8 @@ class Server(BaseHTTPRequestHandler):
                     message = "droplet status has been reported to main server"
                 elif action == "update":
                     message = droplet_update()
+                elif action == "shutdown":
+                    message = droplet_shutdown()
                 elif action == "restart":
                     droplet_restart_daemon()
                     message = "droplet daemon restarts in 5 seconds..."
@@ -205,6 +210,14 @@ def droplet_update():
         process.kill()
         outs, errs = process.communicate()
     return outs.decode("utf-8") + errs.decode("utf-8")
+
+
+def droplet_shutdown():
+    threading.Timer(DEFAULT_SHUTDOWN_DELAY, exit_gracefully).start()
+    return "droplet has been scheduled to shutdown in {} seconds. ".format(DEFAULT_SHUTDOWN_DELAY) + \
+           "it will checked-out and stop all running scripts. " + \
+           "Note that all your running scripts are preserved and " + \
+           "will be restored upon next check-in."
 
 
 def droplet_restart_daemon():
@@ -389,7 +402,7 @@ def _do_report_droplet_status():
 
 def _do_restart_droplet_daemon():
     # checkout droplet
-    checkout_droplet()
+    _do_exit_clean_up()
     python = sys.executable
     os.execl(python, python, *sys.argv)
 
@@ -511,6 +524,27 @@ def _get_memory_usage(pid):
     return rss
 
 
+def _do_exit_clean_up():
+    printt("droplet shutting down...")
+    checkout_droplet()
+    global _report_timer
+    global _httpd
+    global _httpd_alive
+    if _report_timer:
+        _report_timer.cancel()
+        printt("successfully cancelled report timer...")
+
+    _httpd_alive = False
+    _httpd.server_close()
+    printt('Server DOWN')
+
+    #
+    #   don't forget to shutdown all running scripts
+    #
+    script_stop_all()
+    printt("successfully stopped all scripts")
+
+
 #
 #
 #
@@ -529,16 +563,7 @@ def _get_memory_usage(pid):
 #
 #
 def exit_gracefully(*av):
-    printt("droplet shutting down...")
-    checkout_droplet()
-    global _report_timer
-    global _httpd
-    if _report_timer:
-        _report_timer.cancel()
-        printt("successfully cancelled report timer...")
-
-    _httpd.server_close()
-    printt(time.asctime(), 'Server DOWN')
+    _do_exit_clean_up()
     exit(0)
 
 
@@ -571,6 +596,7 @@ def checkin_droplet(port, name, _type):
         return
     pid = os.getpid()
     data = {
+        "version": VERSION,
         "systemUser": getpass.getuser(),
         "name": name,
         "type": _type,
@@ -585,11 +611,6 @@ def checkin_droplet(port, name, _type):
         res = requests.post(url=CHECK_IN_URL, data=json.dumps(data), headers=headers).json()
         _id = res["_id"]
         printt("successfully checked-in droplet")
-        #
-        #   load previous scripts
-        #
-        _retrieve_and_restore_all_scripts()
-        printt("successfully restored all scripts")
         # return droplet id
         return _id
     except Exception as e:
@@ -647,6 +668,12 @@ def main():
     checkin_droplet(args.port, args.name, args.type)
 
     #
+    #   load previous scripts
+    #
+    _retrieve_and_restore_all_scripts()
+    printt("successfully restored all scripts")
+
+    #
     #   start report timer
     #
     periodically_report_to_main_server()
@@ -658,7 +685,9 @@ def main():
     try:
         printt('Server UP - %s:%s' % (args.address, args.port))
         _httpd = HTTPServer((args.address, args.port), Server)
-        _httpd.serve_forever()
+        # _httpd.serve_forever()
+        while _httpd_alive:
+            _httpd.handle_request()
 
     except Exception as e:
         printt(str(e))
@@ -666,7 +695,7 @@ def main():
     #
     #   quit the program
     #
-    exit_gracefully()
+    _do_exit_clean_up()
 
 
 if __name__ == '__main__':
