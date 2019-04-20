@@ -500,10 +500,9 @@ def get_memory_usage():
         children = parent.children(recursive=True)
         for child in children:
             try:
-                if child.poll() is None:
-                    rss1 = child.memory_info().rss
-                    if rss1:
-                        rss += rss1
+                rss1 = child.memory_info().rss
+                if rss1:
+                    rss += rss1
             except:
                 pass
     except Exception as e:
