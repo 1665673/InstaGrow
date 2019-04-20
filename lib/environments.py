@@ -361,10 +361,10 @@ def log(buffer, title="LOG  ", account="messages"):
     #
     #   also report current memory usage at the same time
     #
-    rss = get_memory_usage()
+    # rss = get_memory_usage()
     # report
     try:
-        _reporter.payload["attributes"]["rss"] = rss
+        # _reporter.payload["attributes"]["rss"] = rss
         _reporter.send(buffer, account)
     except Exception as e:
         sys.stdout.write("error in reporter: " + str(e))

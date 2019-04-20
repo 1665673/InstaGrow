@@ -2,7 +2,7 @@ from instapy import InstaPy
 from instapy import smart_run
 import lib.environments as env
 
-env.config(version="run-1.4", name="run")
+env.config(version="run-1.41", name="run")
 
 TRACK_FOLLOWER_COUNT_GAP = 3600
 
