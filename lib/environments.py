@@ -245,7 +245,6 @@ def process_arguments(**kw):
     parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
     parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
-    parser.add_argument("-ra", "--retry-allocate", action="store_true")
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
@@ -257,9 +256,6 @@ def process_arguments(**kw):
         _args.password = _args.password1
     if _args.proxy1:
         _args.proxy = _args.proxy1
-    if _args.retry_allocate:
-        _args.retry_proxy = True
-        _args.allocate_proxy = True
 
     # merge named parameters **kw into command line arguments
     if "version" not in kw:
