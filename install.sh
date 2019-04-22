@@ -22,4 +22,4 @@ chown root:root /etc/rc.local
 chmod 755 /etc/rc.local
 systemctl enable rc-local.service
 
-sed -i 's/exit 0/swapon \/swapfile\ncd $PWD\npython3 droplet.py\nexit 0/' /etc/rc.local
+sed -i 's/^exit 0/swapon \/swapfile\ncd $PWD\npython3 droplet.py\nexit 0/' /etc/rc.local
