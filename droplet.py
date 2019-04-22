@@ -231,7 +231,7 @@ def droplet_shutdown():
 
 
 def droplet_restart_service():
-    threading.Timer(DEFAULT_RESTART_DELAY, _do_restart_droplet_daemon).start()
+    threading.Timer(DEFAULT_RESTART_DELAY, _do_restart_droplet_service).start()
 
 
 def droplet_update_restart():
@@ -421,9 +421,11 @@ def _create_worker(argv=[]):
     subprocess.Popen(['python3'] + argv)
 
 
-def _do_restart_droplet_daemon():
+def _do_restart_droplet_service():
+    _do_exit_clean_up()
+    _kill_all_child_processes()
     _create_worker()
-    exit_gracefully_worker()
+    psutil.Process().kill()
 
 
 def _do_restart_operating_system():
@@ -569,6 +571,14 @@ def _do_exit_clean_up():
     printt("successfully stopped all scripts")
 
 
+def _kill_all_child_processes():
+    printt("killing all child processes...")
+    parent = psutil.Process()
+    for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+        child.kill()
+    # parent.kill()
+
+
 #
 #
 #
@@ -660,13 +670,18 @@ def periodically_report_to_main_server():
 
 def exit_gracefully_daemon(*av, **kw):
     printt("droplet service [daemon] ended, pid: {}".format(os.getpid()))
-    exit(0)
+    _kill_all_child_processes()
+    psutil.Process().kill()
+    # exit(0)
+    # os.kill(os.getpid(), 9)
 
 
 def exit_gracefully_worker(*av, **kw):
     _do_exit_clean_up()
+    _kill_all_child_processes()
+    psutil.Process().kill()
     # exit(0)
-    os.kill(os.getpid(), 9)
+    # os.kill(os.getpid(), 9)
 
 
 def main():
@@ -707,7 +722,8 @@ def main():
     #   read config file, process the 'name' argument
     #
     config = configparser.ConfigParser()
-    config.read('droplet.ini')
+    config_file_path = os.path.dirname(os.path.realpath(__file__)) + "/droplet.ini"
+    config.read(config_file_path)
     droplet_name = args.name
     if not droplet_name:
         if "droplet-name" in config["DEFAULT"] and config["DEFAULT"]["droplet-name"]:
@@ -716,7 +732,7 @@ def main():
         droplet_name = DEFAULT_SERVER_NAME
     args.name = droplet_name
     config["DEFAULT"]["droplet-name"] = args.name
-    with open('droplet.ini', 'w') as configfile:
+    with open(config_file_path, 'w') as configfile:
         config.write(configfile)
 
     #

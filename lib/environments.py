@@ -255,18 +255,18 @@ def process_arguments(**kw):
     # see if this is a worker thread...
     # by default, it's a daemon
     if not _args.worker:
-        log("\n\nscript [daemon] started, pid: {}\n\n".format(os.getpid()))
+        log("script [daemon] started, pid: {}\n\n".format(os.getpid()))
         create_worker()
 
         def _exit_handler(*av, **kw):
-            log("\n\nscript [daemon] ended, pid: {}\n\n".format(os.getpid()))
+            log("script [daemon] ended, pid: {}\n\n".format(os.getpid()))
             exit(0)
 
         signal.signal(signal.SIGINT, _exit_handler)
         while True:
             time.sleep(10)
     else:
-        log("\n\nscript [worker] started, pid: {}\n\n".format(os.getpid()))
+        log("script [worker] started, pid: {}\n\n".format(os.getpid()))
 
     # preprocess some arguments of equivalents
     if _args.username1:
@@ -764,6 +764,14 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
         return followers
 
 
+def kill_all_child_processes():
+    log("killing all child processes...")
+    parent = psutil.Process()
+    for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+        child.kill()
+    # parent.kill()
+
+
 def safe_quit(session, message=""):
     #
     # clean-up handlers had been set,  @ InstaPy.end(), which was also patched,
@@ -771,7 +779,14 @@ def safe_quit(session, message=""):
     # just need to exit regularly
     #
     #
-    exit(0)
+    # exit(0)
+    # os.kill(os.getpid(), 3)
+
+    # clean-up everything
+    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string, "message": message})
+    kill_all_child_processes()
+    psutil.Process().kill()
+    # exit(0)
 
 
 # def _quit_clean_up():
@@ -794,11 +809,15 @@ def create_worker(argv=[]):
 
 
 def self_restart(session, argv):
+    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
+    kill_all_child_processes()
     create_worker(argv)
+    psutil.Process().kill()
+    # exit(0)
     #
     #   clean up and quit this process
     #
-    safe_quit(session, "quit then self restart...")
+    # safe_quit(session, "quit then self restart...")
 
 
 def self_update():
