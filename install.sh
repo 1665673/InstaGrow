@@ -23,4 +23,5 @@ chmod 755 /etc/rc.local
 systemctl enable rc-local.service
 
 sed -i "/exit 0/i\swapon /swapfile" /etc/rc.local
-sed -i "/exit 0/i\python3 $PWD/droplet.py" /etc/rc.local
+sed -i "/exit 0/i\cd $PWD" /etc/rc.local
+sed -i "/exit 0/i\python3 droplet.py" /etc/rc.local
