@@ -31,7 +31,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.27"
+ENVIRONMENT_VERSION = "0.28"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -252,21 +252,21 @@ def process_arguments(**kw):
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
 
-    # see if this is a worker thread...
-    # by default, it's a daemon
-    if not _args.worker:
-        log("script [daemon] started, pid: {}\n\n".format(os.getpid()))
-        create_worker()
-
-        def _exit_handler(*av, **kw):
-            log("script [daemon] ended, pid: {}\n\n".format(os.getpid()))
-            exit(0)
-
-        signal.signal(signal.SIGINT, _exit_handler)
-        while True:
-            time.sleep(10)
-    else:
-        log("script [worker] started, pid: {}\n\n".format(os.getpid()))
+    # # see if this is a worker thread...
+    # # by default, it's a daemon
+    # if not _args.worker:
+    #     log("script [daemon] started, pid: {}\n\n".format(os.getpid()))
+    #     create_worker()
+    #
+    #     def _exit_handler(*av, **kw):
+    #         log("script [daemon] ended, pid: {}\n\n".format(os.getpid()))
+    #         exit(0)
+    #
+    #     signal.signal(signal.SIGINT, _exit_handler)
+    #     while True:
+    #         time.sleep(10)
+    # else:
+    #     log("script [worker] started, pid: {}\n\n".format(os.getpid()))
 
     # preprocess some arguments of equivalents
     if _args.username1:
@@ -631,16 +631,16 @@ def set_task_status(task_id, status):
         pass
 
 
-def get_tasks():
-    url = fetch_task_url.replace("{id}", _reporter.id)
+def retrieve_tasks_from_server():
     try:
+        url = fetch_task_url.replace("{id}", _reporter.id)
         return requests.get(url=url).json()
     except Exception:
         return {}
 
 
-def _fetch_tasks():
-    all_tasks = get_tasks()
+def retrieve_new_tasks_from_server():
+    all_tasks = retrieve_tasks_from_server()
     # filter old tasks
     new_tasks = {}
     for key in all_tasks:
@@ -653,7 +653,7 @@ def _fetch_tasks():
 
 
 def fetch_tasks(action_queue):
-    new_tasks = _fetch_tasks()
+    new_tasks = retrieve_new_tasks_from_server()
     for key in new_tasks:
         task_definition = new_tasks[key]
         task = tasks.load_task_by_definition(task_definition, task_queued, task_executing, task_finished)
@@ -793,31 +793,40 @@ def safe_quit(session, message=""):
 #     # check-out proxy
 #     event("SESSION", "SCRIPT-QUITTING", {"proxy": _proxy_in_use})
 
+#
+#  subprocess creator for the daemon-worker schema
+#
 def create_worker(argv=[]):
     if not argv:
         argv = sys.argv
-    # python = sys.executable
-    # os.execl(python, python, *arguments)
-    #
-    #   create new nohup subprocess
-    #
-    # subprocess.Popen(['nohup', 'python3'] + arguments)
     argv = argv.copy()
     if "-w" not in argv:
         argv += ["-w"]
     subprocess.Popen(['python3'] + argv)
 
 
+#
+#  subprocess creater for substituting-main-process schema
+#
+def substitute_process(argv=[]):
+    if not argv:
+        argv = sys.argv
+    python = sys.executable
+    os.execl(python, python, *argv)
+    # subprocess.Popen(['nohup', 'python3'] + arguments)
+
+
 def self_restart(session, argv):
     event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
     kill_all_child_processes()
-    create_worker(argv)
-    psutil.Process().kill()
-    # exit(0)
     #
-    #   clean up and quit this process
+    # # deamon-worker
+    # create_worker(argv)
+    # psutil.Process().kill()
     #
-    # safe_quit(session, "quit then self restart...")
+
+    # substituting
+    substitute_process(argv)
 
 
 def self_update():

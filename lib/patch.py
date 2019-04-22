@@ -68,12 +68,12 @@ def end(self, threaded_session=False):
             self.display.stop()
 
         # write useful information
-        dump_follow_restriction(self.username,
-                                self.logger,
-                                self.logfolder)
-        dump_record_activity(self.username,
-                             self.logger,
-                             self.logfolder)
+        # dump_follow_restriction(self.username,
+        #                         self.logger,
+        #                         self.logfolder)
+        # dump_record_activity(self.username,
+        #                      self.logger,
+        #                      self.logfolder)
 
         # with open('{}followed.txt'.format(self.logfolder), 'w') \
         #        as followFile:
