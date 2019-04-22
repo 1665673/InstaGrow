@@ -15,6 +15,7 @@ import requests
 import threading
 import getpass
 from dotenv import load_dotenv, find_dotenv
+import configparser
 
 load_dotenv(find_dotenv())
 
@@ -27,6 +28,7 @@ DEFAULT_STOP_COOLDOWN = 30
 DEFAULT_PORT_NUMBER = 8000
 DEFAULT_SHUTDOWN_DELAY = 5
 DEFAULT_RESTART_DELAY = 5
+DEFAULT_RESTART_SYSTEM_DELAY = 5
 REPORT_RIGHT_AFTER_CHANGE = 5
 MAIN_SERVER_ADDRESS = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 #
@@ -99,46 +101,66 @@ class Server(BaseHTTPRequestHandler):
         arguments = parts[3]
         try:
             if controller == "droplet":
+                #
                 if action == "status":
                     data = droplet_status()
+                #
                 elif action == "report-status":
                     droplet_report_status()
                     message = "droplet status has been reported to main server"
+                #
                 elif action == "update":
                     message = droplet_update()
+                #
                 elif action == "shutdown":
-                    message = droplet_shutdown()
+                    droplet_shutdown()
+                    message = \
+                        "droplet has been scheduled to shutdown in {} seconds. ".format(DEFAULT_SHUTDOWN_DELAY) + \
+                        "it will checked-out and stop all running scripts. " + \
+                        "Note that all your running scripts are preserved and " + \
+                        "will be restored upon next check-in."
+                #
                 elif action == "restart":
-                    droplet_restart_daemon()
-                    message = "droplet daemon restarts in 5 seconds..."
+                    droplet_restart_service()
+                    message = "droplet service restarts in 5 seconds..."
+                #
                 elif action == "update-restart":
                     droplet_update_restart()
-                    message = "droplet daemon restarts in 5 seconds..."
+                    message = "droplet service restarts in 5 seconds..."
+                #
                 elif action == "restart-system":
                     droplet_restart_system()
                     message = "operating system restarts in 5 seconds"
+                #
                 else:
                     raise Exception("invalid action or arguments")
             elif controller == "script":
+                #
                 if action == "login" and instance:
                     script = script_login(instance)
                     message = "login started. start time: {}".format(script["start-time"])
+                #
                 elif action == "start" and instance and arguments:
                     script = script_start(instance, arguments.split('+'))
                     message = "script started. start time: {}".format(script["start-time"])
+                #
                 elif action == "stop" and instance:
                     script = script_stop(instance)
                     message = "script stopped. start time: {0}, stop time: {1}" \
                         .format(script["start-time"], int(time.time()))
+                #
                 elif action == "restart" and instance:
                     script = script_restart(instance)
                     message = "script restarted. start time: {}".format(script["start-time"])
+                #
                 elif action == "stop-all":
                     script_stop_all()
                     message = "all scripts stopped"
+                #
                 elif action == "restart-all":
                     script_restart_all()
                     message = "all scripts restarted"
+                #
                 else:
                     raise Exception("invalid action or arguments")
                 #
@@ -184,15 +206,7 @@ class Server(BaseHTTPRequestHandler):
 #
 #
 def printt(*av, **kw):
-    print(int(time.time()), *av, **kw)
-
-
-def droplet_status():
-    return {
-        "_id": _id,
-        "status": _summary_droplet_status(),
-        "scripts": _summary_all_scripts()
-    }
+    print(os.getpid(), int(time.time()), *av, **kw)
 
 
 def droplet_report_status():
@@ -213,20 +227,16 @@ def droplet_update():
 
 
 def droplet_shutdown():
-    threading.Timer(DEFAULT_SHUTDOWN_DELAY, exit_gracefully).start()
-    return "droplet has been scheduled to shutdown in {} seconds. ".format(DEFAULT_SHUTDOWN_DELAY) + \
-           "it will checked-out and stop all running scripts. " + \
-           "Note that all your running scripts are preserved and " + \
-           "will be restored upon next check-in."
+    threading.Timer(DEFAULT_SHUTDOWN_DELAY, exit_gracefully_worker).start()
 
 
-def droplet_restart_daemon():
+def droplet_restart_service():
     threading.Timer(DEFAULT_RESTART_DELAY, _do_restart_droplet_daemon).start()
 
 
 def droplet_update_restart():
     droplet_update()
-    droplet_restart_daemon()
+    droplet_restart_service()
     # return {
     #     "dropletUpdate": droplet_update(),
     #     "dropletRestart": droplet_restart()
@@ -237,7 +247,7 @@ def droplet_restart_system():
     #
     #   shutdown droplet
     #
-    raise Exception("this feature comming soon...")
+    threading.Timer(DEFAULT_RESTART_SYSTEM_DELAY, _do_restart_operating_system).start()
 
 
 def script_login(instance):
@@ -400,11 +410,25 @@ def _do_report_droplet_status():
         printt("report_to_main_server(): " + str(e))
 
 
+def _create_worker(argv=[]):
+    if not argv:
+        argv = sys.argv
+    argv = argv.copy()
+    if "-w" not in argv:
+        argv += ["-w"]
+    # python = sys.executable
+    # os.execl(python, python, *argv)
+    subprocess.Popen(['python3'] + argv)
+
+
 def _do_restart_droplet_daemon():
-    # checkout droplet
+    _create_worker()
+    exit_gracefully_worker()
+
+
+def _do_restart_operating_system():
     _do_exit_clean_up()
-    python = sys.executable
-    os.execl(python, python, *sys.argv)
+    os.system("reboot")
 
 
 # def _save_and_stop_all_scripts():
@@ -536,7 +560,7 @@ def _do_exit_clean_up():
 
     _httpd_alive = False
     _httpd.server_close()
-    printt('Server DOWN')
+    printt('successfully shutdown http server')
 
     #
     #   don't forget to shutdown all running scripts
@@ -562,9 +586,12 @@ def _do_exit_clean_up():
 #
 #
 #
-def exit_gracefully(*av):
-    _do_exit_clean_up()
-    exit(0)
+def droplet_status():
+    return {
+        "_id": _id,
+        "status": _summary_droplet_status(),
+        "scripts": _summary_all_scripts()
+    }
 
 
 def checkout_droplet():
@@ -573,7 +600,7 @@ def checkout_droplet():
         try:
             # report latest status to main server before checking-out
             _do_report_droplet_status()
-            printt("successfully saved and stopped all scripts")
+            printt("successfully saved all scripts")
             # checkout this droplet
             url = CHECK_OUT_URL.replace("{id}", _id)
             result = requests.delete(url=url).json()
@@ -631,36 +658,89 @@ def periodically_report_to_main_server():
     _do_report_droplet_status()
 
 
+def exit_gracefully_daemon(*av, **kw):
+    printt("droplet service [daemon] ended, pid: {}".format(os.getpid()))
+    exit(0)
+
+
+def exit_gracefully_worker(*av, **kw):
+    _do_exit_clean_up()
+    # exit(0)
+    os.kill(os.getpid(), 9)
+
+
 def main():
     #
     #   parse arguments
     #
     parser = argparse.ArgumentParser()
+    parser.add_argument("-w", "--worker", action="store_true")
     parser.add_argument("-a", "--address", type=str)
     parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--type", type=str)
     parser.add_argument("-ri", "--report-interval", type=int)
     args = parser.parse_args()
+
+    #
+    #   see if this process is daemon or worker
+    #
+    #   by default, i.e., without argument "-r", it's a daemon
+    #
+    if not args.worker:
+        printt("droplet service [daemon] started, pid: {}".format(os.getpid()))
+        _create_worker()
+        signal.signal(signal.SIGINT, exit_gracefully_daemon)
+        #
+        #   simply keep the daemon alive
+        #
+        while True:
+            time.sleep(10)
+
+    #
+    #   if code goes here, then this is a worker process
+    #   get everything ready and start to server!!!
+    #
+    printt("droplet service [worker] started, pid: {}".format(os.getpid()))
+
+    #
+    #   read config file, process the 'name' argument
+    #
+    config = configparser.ConfigParser()
+    config.read('droplet.ini')
+    droplet_name = args.name
+    if not droplet_name:
+        if "droplet-name" in config["DEFAULT"] and config["DEFAULT"]["droplet-name"]:
+            droplet_name = config["DEFAULT"]["droplet-name"]
+    if not droplet_name:
+        droplet_name = DEFAULT_SERVER_NAME
+    args.name = droplet_name
+    config["DEFAULT"]["droplet-name"] = args.name
+    with open('droplet.ini', 'w') as configfile:
+        config.write(configfile)
+
+    #
+    #   process other arguments
+    #
     if not args.address:
         args.address = DEFAULT_SERVER_ADDRESS
     if not args.port:
         args.port = DEFAULT_PORT_NUMBER
-    if not args.name:
-        args.name = DEFAULT_SERVER_NAME
     if not args.type:
         args.type = DEFAULT_SERVER_TYPE
     if not args.report_interval:
         args.report_interval = DEFAULT_REPORT_INTERVAL
+
     #
     #   register graceful quit handler
     #
     try:
-        signal.signal(signal.SIGINT, exit_gracefully)
-        signal.signal(signal.SIGTERM, exit_gracefully)
-        signal.signal(signal.SIGKILL, exit_gracefully)
+        signal.signal(signal.SIGINT, exit_gracefully_worker)
+        signal.signal(signal.SIGTERM, exit_gracefully_worker)
+        signal.signal(signal.SIGKILL, exit_gracefully_worker)
     except Exception as e:
-        printt("error-registering-exit-handlers: ", str(e))
+        pass
+        # printt("error-registering-exit-handlers: ", str(e))
 
     #
     #   checkin server
@@ -683,7 +763,7 @@ def main():
     #
     global _httpd
     try:
-        printt('Server UP - %s:%s' % (args.address, args.port))
+        printt('successfully started http server UP - %s:%s' % (args.address, args.port))
         _httpd = HTTPServer((args.address, args.port), Server)
         # _httpd.serve_forever()
         while _httpd_alive:

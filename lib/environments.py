@@ -8,6 +8,7 @@ import json as _json
 from instapy.util import web_address_navigator
 import os
 import psutil
+import signal
 # import pickle
 import subprocess
 from dotenv import load_dotenv, find_dotenv
@@ -52,6 +53,7 @@ _arguments = {}
 _reporter = None
 _reporter_fields = {}
 _session = None
+_proxy_in_use = None
 _tasks_dict = None
 _pulled_cookies = None
 _action_statistics = {}
@@ -211,7 +213,7 @@ def init_environment(**kw):
         #
     })
 
-    print(_reporter_fields)
+    # print(_reporter_fields)
 
     # also put all commandline arguments into report fields
     # so _reporter_fields includes:
@@ -228,6 +230,7 @@ def process_arguments(**kw):
     parser.add_argument("username", nargs='?', type=str)
     parser.add_argument("password", nargs='?', type=str)
     parser.add_argument("proxy", nargs='?', type=str)
+    parser.add_argument("-w", "--worker", action="store_true")
     parser.add_argument("-user", "--username1", type=str)
     parser.add_argument("-pass", "--password1", type=str)
     parser.add_argument("-proxy", "--proxy1", type=str)
@@ -248,6 +251,22 @@ def process_arguments(**kw):
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
+
+    # see if this is a worker thread...
+    # by default, it's a daemon
+    if not _args.worker:
+        log("\n\nscript [daemon] started, pid: {}\n\n".format(os.getpid()))
+        create_worker()
+
+        def _exit_handler(*av, **kw):
+            log("\n\nscript [daemon] ended, pid: {}\n\n".format(os.getpid()))
+            exit(0)
+
+        signal.signal(signal.SIGINT, _exit_handler)
+        while True:
+            time.sleep(10)
+    else:
+        log("\n\nscript [worker] started, pid: {}\n\n".format(os.getpid()))
 
     # preprocess some arguments of equivalents
     if _args.username1:
@@ -530,6 +549,8 @@ def event_handler(type, name, data):
         update({"sessionIP": data["sessionIP"]})
         # report proxy client, if applicable
         if data["proxy"]:
+            global _proxy_in_use
+            _proxy_in_use = data["proxy"]
             url = proxy_add_client_url.replace("{string}", data["proxy"])
             postdata = {
                 "id": _reporter.id,
@@ -744,16 +765,40 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
 
 
 def safe_quit(session, message=""):
-    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string, "message": message})
+    #
+    # clean-up handlers had been set,  @ InstaPy.end(), which was also patched,
+    # so, everything's been taken care of,
+    # just need to exit regularly
+    #
+    #
     exit(0)
 
 
-def self_restart(session, arguments):
-    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
-    python = sys.executable
-    if not arguments:
-        arguments = sys.argv
-    os.execl(python, python, *arguments)
+# def _quit_clean_up():
+#     # check-out proxy
+#     event("SESSION", "SCRIPT-QUITTING", {"proxy": _proxy_in_use})
+
+def create_worker(argv=[]):
+    if not argv:
+        argv = sys.argv
+    # python = sys.executable
+    # os.execl(python, python, *arguments)
+    #
+    #   create new nohup subprocess
+    #
+    # subprocess.Popen(['nohup', 'python3'] + arguments)
+    argv = argv.copy()
+    if "-w" not in argv:
+        argv += ["-w"]
+    subprocess.Popen(['python3'] + argv)
+
+
+def self_restart(session, argv):
+    create_worker(argv)
+    #
+    #   clean up and quit this process
+    #
+    safe_quit(session, "quit then self restart...")
 
 
 def self_update():
