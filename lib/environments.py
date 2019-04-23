@@ -496,6 +496,7 @@ def report_success(session):
         "instagramUser": session.username,
         "instagramPassword": session.password,
     }
+
     if session.password:
         update_attributes["loginResult"] = "success"
     else:

@@ -131,20 +131,21 @@ def login(self):
 
     else:
         InstaPy.env.event("LOGIN", "SUCCESS")
-        message = "Logged in successfully!"
+        message = "Login success! synchronizing status with server..."
         highlight_print(self.username,
                         message,
                         "login",
                         "info",
                         self.logger)
+
         # try to save account progress
-        try:
-            save_account_progress(self.browser,
-                                  self.username,
-                                  self.logger)
-        except Exception:
-            self.logger.warning(
-                'Unable to save account progress, skipping data update')
+        # try:
+        #     save_account_progress(self.browser,
+        #                           self.username,
+        #                           self.logger)
+        # except Exception:
+        #     self.logger.warning(
+        #         'Unable to save account progress, skipping data update')
 
         # self.followed_by = log_follower_num(self.browser,
         #                                    self.username,
