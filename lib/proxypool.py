@@ -16,12 +16,19 @@ SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgr
 # if "instapy" in sys.modules:
 #    is_module = True
 
-allocate_proxy_url = SERVER + "/admin/proxy/allocate"
+allocate_proxy_url = SERVER + "/admin/proxy/allocate/{group}/{tag}/{exclude}"
 mark_fail_url = SERVER + "/admin/proxy/{string}/fails"
 
 
-def allocate_proxy(current_proxy=None):
-    url = allocate_proxy_url + ("/" + current_proxy if current_proxy else "")
+def allocate_proxy(group="all", tag="all", exclude=None):
+    if not group:
+        group = "all"
+    if not tag:
+        tag = "all"
+    if not exclude:
+        exclude = "null"
+
+    url = allocate_proxy_url.format(group=group, tag=tag, exclude=exclude)
     try:
         proxy = requests.get(url=url).json()
     except Exception:
@@ -29,7 +36,7 @@ def allocate_proxy(current_proxy=None):
     if "string" in proxy:
         return proxy
     else:
-        return None
+        return ""
 
 
 def mark_fail(proxy, client_id="proxypool.py"):

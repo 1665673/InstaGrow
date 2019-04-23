@@ -182,12 +182,14 @@ def set_selenium_local_session_patch(self):
         #   prepare proxy configuration if using proxy
         #   do necessary query if in query mode
         #
-        using_proxy = alloc_proxy or bool(self.proxy_address) or (retry_proxy and not first_attempt)
+        using_proxy = bool(alloc_proxy) or bool(self.proxy_address) or (retry_proxy and not first_attempt)
         if using_proxy:
             InstaPy.super_print("[selenium] setting up proxy")
             if (not first_attempt) or (not self.proxy_address):
-                if alloc_proxy:
-                    proxy = self.proxypool.allocate_proxy(proxy_string)
+                if alloc_proxy is not None:
+                    group = alloc_proxy[0]
+                    tag = alloc_proxy[1]
+                    proxy = self.proxypool.allocate_proxy(group, tag, proxy_string)
                     if "string" not in proxy:
                         InstaPy.env.event("SELENIUM", "ALLOCATE-PROXY-FAILED")
                         exit(0)

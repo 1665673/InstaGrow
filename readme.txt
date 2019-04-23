@@ -1,17 +1,25 @@
 
 [安装]
 
-
-(1)选择geckodriver.mac或者geckodriver.ubuntu，不带后缀名复制进$PATH目录，例如
-cp geckodriver.mac /usr/local/bin/geckodriver
-(2)安装火狐
-apt-get install firefox
-(3)安装脚本环境
-pip3 install -r requirements.txt
+在本文件目录下，执行以下语句即可。
+sudo bash install.sh
 
 
 
-[命令行参数用法]
+
+[服务命令行参数用法]
+
+
+python3 droplet.py [-n 服务器名称] [-t 服务器类型]
+------------------------------------------------------------------------
+服务器名称用来辨识一台特定的droplet服务器。名称必须保证唯一。如果不指定这个参数，系统将自动分配一个唯一的名字。
+服务器类型用来标记服务器用途。只可取两个值，login或regular。如果不指定这个参数，默认为regular。
+后台自动管理脚本时，login任务会选择跑在login类型的服务器上；其他常规脚本会选择跑在regular类型。
+
+
+
+
+[脚本命令行参数用法]
 
 
 (1)基本语法
@@ -30,10 +38,16 @@ python3 run.py [IG用户] [IG密码] [代理地址:端口:用户:密码] -t 任�
 
 
 (2)功能型参数
--ap, --allocate-proxy
+-ap, --allocate-proxy [group] [tag]
 ------------------------------------------------------------------------
-后台自动分配代理。ap只在参数中缺少代理时发生作用，如果命令行已经给出代理参数，或pull中包含代理，ap将不生效。
-【举例】python3 like.py minhaodeng 12345678 -ap
+后台自动分配代理。可跟随group和（或）tag两个附加参数。
+group表明只分配特定group的代理。如果不指定这个附加参数，或指定为"all"，则不区分group。
+tag表明只分配标记为特定tag的代理。如果未不指定这个附加参数，或指定为"all"，则不区分tag。
+ap只在参数中缺少代理时发生作用，如果命令行已经给出代理参数，或pull中包含代理，ap将不生效。
+【举例1】python3 follow.py minhaodeng 12345678 -ap
+系统将从proxy pool里的所有代理中，全局优选一个代理。
+【举例2】python3 like.py minhaodeng 12345678 -ap group0 premium
+系统将从proxy pool里的group0这组代理中，找到标记为premium的子集，然后从这些代理中优选一个代理。
 
 
 

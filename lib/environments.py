@@ -247,7 +247,7 @@ def process_arguments(**kw):
     parser.add_argument("-q", "--query", action="store_true")
     parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
     parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
-    parser.add_argument("-ap", "--allocate-proxy", action="store_true")
+    parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
@@ -268,7 +268,12 @@ def process_arguments(**kw):
     # else:
     #     log("script [worker] started, pid: {}\n\n".format(os.getpid()))
 
-    # preprocess some arguments of equivalents
+    # process argument allocate-proxy
+    if _args.allocate_proxy is not None:
+        # add two default values to make sure it has 2 sub arguments
+        _args.allocate_proxy += ["all", "all"]
+
+        # preprocess some arguments of equivalents
     if _args.username1:
         _args.username = _args.username1
     if _args.password1:
@@ -529,6 +534,22 @@ def get_memory_usage():
     #
 
 
+def send_get_request_to_server(url):
+    try:
+        return requests.get(url).json()
+    except:
+        return {}
+
+
+def send_post_request_to_server(url, _data):
+    try:
+        headers = {'content-type': 'application/json'}
+        return requests.post(url=url, data=_json.dumps(_data), headers=headers).json()
+    except Exception as e:
+        sys.stdout.write(str(e))
+        return {}
+
+
 #
 #
 #
@@ -684,6 +705,46 @@ def task_executing(task, type, target):
 def task_finished(task):
     # event("TASK", "FINISHED", {"time": int(time.time()), "id": task.id, "title": task.title})
     set_task_status(task.id, "FINISHED")
+
+
+update_statistics_url = SERVER + "/admin/update-action-statistics"
+
+
+def do_statistics(action, target, success):
+    if action is None or success is None:
+        return
+    global _action_statistics
+    statistics = _action_statistics
+    if action not in statistics:
+        statistics[action] = {
+            "success": 0,
+            "fail": 0
+        }
+
+    # add this action into statistics
+    success = bool(success)
+    if success:
+        statistics[action]["success"] += 1
+    else:
+        statistics[action]["fail"] += 1
+
+    # mark this action the last executed action
+    lastAction = {
+        "name": action,
+        "target": target,
+        "success": success
+    }
+
+    # update statistics to server
+    stat_data = {
+        "logID": _reporter.id if _reporter else None,
+        "proxyString": _proxy_in_use,
+        "statistics": statistics,
+        "lastAction": lastAction
+    }
+
+    if _reporter and _reporter.id:
+        send_post_request_to_server(update_statistics_url, stat_data)
 
 
 #

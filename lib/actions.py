@@ -155,9 +155,9 @@ def execute(action_type, target, ready):
     session = env.get_session()
     try:
         success = handlers[action_type](session, target)
-        do_statistics(action_type, target, success)
+        env.do_statistics(action_type, target, success)
     except Exception as e:
-        do_statistics(action_type, target, False)
+        env.do_statistics(action_type, target, False)
         if not e:
             e = "action-handler-error"
         env.error(action_type, "exception", str(e))
@@ -174,27 +174,3 @@ def init_subtask(handler):
         if not e:
             e = "subtask-init-error"
         env.error(handler, "exception", str(e))
-
-
-def do_statistics(action, target, success):
-    if action is None or success is None:
-        return
-    statistics = env._action_statistics
-    if action not in statistics:
-        statistics[action] = {
-            "success": 0,
-            "fail": 0
-        }
-    # add this action into statistics
-    if success:
-        statistics[action]["success"] += 1
-    else:
-        statistics[action]["fail"] += 1
-    # mark this action the last executed action
-    statistics["lastAction"] = {
-        "name": action,
-        "target": target,
-        "result": success
-    }
-    # update statistics to server
-    env.update({"actionStatistics": statistics})
