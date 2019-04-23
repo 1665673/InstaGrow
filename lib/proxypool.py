@@ -20,11 +20,11 @@ allocate_proxy_url = SERVER + "/admin/proxy/allocate/{group}/{tag}/{exclude}"
 mark_fail_url = SERVER + "/admin/proxy/{string}/fails"
 
 
-def allocate_proxy(group="all", tag="all", exclude=None):
+def allocate_proxy(group="default", tag="default", exclude=None):
     if not group:
-        group = "all"
+        group = "default"
     if not tag:
-        tag = "all"
+        tag = "default"
     if not exclude:
         exclude = "null"
 

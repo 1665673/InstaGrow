@@ -271,7 +271,7 @@ def process_arguments(**kw):
     # process argument allocate-proxy
     if _args.allocate_proxy is not None:
         # add two default values to make sure it has 2 sub arguments
-        _args.allocate_proxy += ["all", "all"]
+        _args.allocate_proxy += ["default", "default"]
 
         # preprocess some arguments of equivalents
     if _args.username1:
