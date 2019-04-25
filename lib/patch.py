@@ -705,9 +705,10 @@ def login_user(browser,
     elif page_after_login == "SUSPICIOUS":
         if bypass_suspicious_attempt:
             super_print("[login_user] no indication of what specific location we're at, let's bypass-suspicious-page")
-            env.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
-            if not bypass_suspicious_login(browser, bypass_with_mobile):
-                return False
+            reload_webpage(browser)
+            # env.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
+            # if not bypass_suspicious_login(browser, bypass_with_mobile):
+            #     return False
         else:
             super_print("[login_user] no indication of what specific location we're at, let's refresh our browser")
             reload_webpage(browser)

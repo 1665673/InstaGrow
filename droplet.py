@@ -46,6 +46,7 @@ _httpd_alive = True
 _id = None
 _scripts = {}
 _report_timer = None
+_gui = False
 
 
 class Server(BaseHTTPRequestHandler):
@@ -335,6 +336,10 @@ def _run_script(argv):
     # else:
     #     python = sys.executable
     #     os.execl(python, python, *argv)
+    if _gui:
+        if "-g" not in argv and "--gui" not in argv:
+            argv += ["-g"]
+
     printt("[run-script]", "about to run this script:\n", str(["python3"] + argv))
 
     # get instance, username and tasks from arguments
@@ -697,6 +702,7 @@ def main():
     #
     parser = argparse.ArgumentParser()
     parser.add_argument("-w", "--worker", action="store_true")
+    parser.add_argument("-g", "--gui", action="store_true")
     parser.add_argument("-a", "--address", type=str)
     parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-n", "--name", type=str)
@@ -718,6 +724,13 @@ def main():
         #
         while True:
             time.sleep(10)
+
+    #
+    #   if gui, use gui mode to run scripts
+    #   ***for test purpose
+    #
+    global _gui
+    _gui = args.gui
 
     #
     #   if code goes here, then this is a worker process
