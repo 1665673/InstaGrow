@@ -255,7 +255,7 @@ def script_login(instance):
         raise Exception("no-instance")
     if instance in _scripts:
         raise Exception("instance-already-exists")
-    argv = ["login.py", "-q", "-ap", "-s", "-i", instance, "-g"]
+    argv = ["login.py", "-wc", "-q", "-ap", "-s", "-i", instance, "-o", _id]
     return _run_script(argv)
 
 
@@ -286,10 +286,10 @@ def script_stop(instance):
     printt("[stop-script] instance:", instance)
     if not instance or instance not in _scripts:
         raise Exception("no-instance or invalid instance")
-    start_time = _scripts[instance]["start-time"]
-    if start_time + DEFAULT_STOP_COOLDOWN > int(time.time()):
-        raise Exception("please don't stop an instance within {0} seconds of starting. wait for another: {1} seconds"
-                        .format(DEFAULT_STOP_COOLDOWN, start_time + DEFAULT_STOP_COOLDOWN - int(time.time())))
+    # start_time = _scripts[instance]["start-time"]
+    # if start_time + DEFAULT_STOP_COOLDOWN > int(time.time()):
+    #     raise Exception("please don't stop an instance within {0} seconds of starting. wait for another: {1} seconds"
+    #                     .format(DEFAULT_STOP_COOLDOWN, start_time + DEFAULT_STOP_COOLDOWN - int(time.time())))
     return _stop_script_by_instance(instance)
 
 
@@ -483,6 +483,7 @@ def _stop_script_by_instance(instance):
         # process.kill()
         # process.terminate()
         # os.kill(process.pid, signal.SIGINT)
+        _kill_all_child_processes(process.pid)
         process.send_signal(signal.SIGINT)
         _scripts.pop(instance, None)
         # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
@@ -525,7 +526,7 @@ def _parse_script_arguments(argv):
     parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
     parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
-    parser.add_argument("-ra", "--retry-allocate", action="store_true")
+    parser.add_argument("-wc", "--without-cookies", action="store_true")
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     return parser.parse_args(argv)
@@ -540,9 +541,10 @@ def _get_memory_usage(pid):
         children = parent.children(recursive=True)
         for child in children:
             try:
-                rss1 = child.memory_info().rss
-                if rss1:
-                    rss += rss1
+                if child.poll() is None:
+                    rss1 = child.memory_info().rss
+                    if rss1:
+                        rss += rss1
             except:
                 pass
     except Exception as e:
@@ -571,9 +573,14 @@ def _do_exit_clean_up():
     printt("successfully stopped all scripts")
 
 
-def _kill_all_child_processes():
+def _kill_all_child_processes(pid=None):
     printt("killing all child processes...")
-    parent = psutil.Process()
+    parent = None
+    if not pid:
+        parent = psutil.Process()
+    else:
+        parent = psutil.Process(pid)
+
     for child in parent.children(recursive=True):  # or parent.children() for recursive=False
         child.kill()
     # parent.kill()

@@ -297,6 +297,7 @@ def login_user(browser,
     # assert password, 'Password not provided'
     #
     query_mode = env.args().query
+    without_cookies = env.args().without_cookies
 
     #
     #
@@ -305,20 +306,23 @@ def login_user(browser,
     #   load cookie before doing anything else
     #
     #
-    super_print("[login_user] loading cookies")
-    env.event("LOGIN", "LOADING-COOKIES")
     cookie_loaded = False
-    try:
-        if env._pulled_cookies:
-            cookies = env._pulled_cookies
-            env.info("cookies restored from server")
-        else:
-            cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
-        for cookie in cookies:
-            browser.add_cookie(cookie)
-            cookie_loaded = True
-    except (WebDriverException, OSError, IOError):
-        super_print("[login_user] Cookie file not found, creating cookie...")
+    if not without_cookies:
+        super_print("[login_user] loading cookies")
+        env.event("LOGIN", "LOADING-COOKIES")
+        try:
+            if env._pulled_cookies:
+                cookies = env._pulled_cookies
+                env.info("cookies restored from server")
+            else:
+                cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
+            for cookie in cookies:
+                browser.add_cookie(cookie)
+                cookie_loaded = True
+        except (WebDriverException, OSError, IOError):
+            super_print("[login_user] Cookie file not found, creating cookie...")
+    else:
+        super_print("[login_user] ignored previous cookies")
 
     #
     #   patch
