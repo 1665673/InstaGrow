@@ -580,14 +580,13 @@ def _do_exit_clean_up():
 
 def _kill_all_child_processes(pid=None):
     printt("killing all child processes...")
-    parent = None
-    if not pid:
-        parent = psutil.Process()
-    else:
-        parent = psutil.Process(pid)
-
-    for child in parent.children(recursive=True):  # or parent.children() for recursive=False
-        child.kill()
+    parent = psutil.Process(pid) if pid else psutil.Process()
+    if parent:
+        for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+            try:
+                child.kill()
+            except Exception as e:
+                printt("error in _kill_all_child_processes():", str(e))
     # parent.kill()
 
 
