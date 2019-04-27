@@ -757,7 +757,8 @@ def do_statistics(action, target, success):
 #
 #
 ip_address_check_url = "https://api.ipify.org/"
-instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
+# instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
+instagram_test_url = "https://www.instagram.com/accounts/login/"
 
 
 def test_connection(browser):
