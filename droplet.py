@@ -19,7 +19,7 @@ import configparser
 
 load_dotenv(find_dotenv())
 
-VERSION = "1.02"
+VERSION = "1.03"
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
@@ -698,6 +698,36 @@ def exit_gracefully_worker(*av, **kw):
     # os.kill(os.getpid(), 9)
 
 
+def read_config_file(args):
+    config = configparser.ConfigParser()
+    config_file_path = os.path.dirname(os.path.realpath(__file__)) + "/droplet.ini"
+    config.read(config_file_path)
+    #
+    #   name
+    #
+    droplet_name = args.name
+    if not droplet_name:
+        if "droplet-name" in config["DEFAULT"] and config["DEFAULT"]["droplet-name"]:
+            droplet_name = config["DEFAULT"]["droplet-name"]
+    if not droplet_name:
+        droplet_name = DEFAULT_SERVER_NAME
+    args.name = droplet_name
+    config["DEFAULT"]["droplet-name"] = args.name
+    #
+    #   type
+    #
+    droplet_type = args.type
+    if not droplet_type:
+        if "droplet-type" in config["DEFAULT"] and config["DEFAULT"]["droplet-type"]:
+            droplet_type = config["DEFAULT"]["droplet-type"]
+    if not droplet_type:
+        droplet_type = DEFAULT_SERVER_TYPE
+    args.type = droplet_type
+    config["DEFAULT"]["droplet-type"] = args.type
+    with open(config_file_path, 'w') as configfile:
+        config.write(configfile)
+
+
 def main():
     #
     #   parse arguments
@@ -741,21 +771,9 @@ def main():
     printt("droplet service [worker] started, pid: {}".format(os.getpid()))
 
     #
-    #   read config file, process the 'name' argument
+    #   read config file, process 'type' and 'name' argument
     #
-    config = configparser.ConfigParser()
-    config_file_path = os.path.dirname(os.path.realpath(__file__)) + "/droplet.ini"
-    config.read(config_file_path)
-    droplet_name = args.name
-    if not droplet_name:
-        if "droplet-name" in config["DEFAULT"] and config["DEFAULT"]["droplet-name"]:
-            droplet_name = config["DEFAULT"]["droplet-name"]
-    if not droplet_name:
-        droplet_name = DEFAULT_SERVER_NAME
-    args.name = droplet_name
-    config["DEFAULT"]["droplet-name"] = args.name
-    with open(config_file_path, 'w') as configfile:
-        config.write(configfile)
+    read_config_file(args)
 
     #
     #   process other arguments
