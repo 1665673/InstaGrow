@@ -18,7 +18,7 @@ chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 
-if test ! -f /etc/rc.local1; then
+if test ! -f /etc/rc.local; then
     # echo "rc.local1 does not exists"
     echo -e '#!/bin/bash\n\nexit 0' >> /etc/rc.local
 fi
