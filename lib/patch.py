@@ -687,9 +687,9 @@ def login_user(browser,
             return False
 
         # read and send security code
+        security_code = None
         first_attempt = True
         while True:
-            security_code = None
             env.event("LOGIN", "WAITING-FOR-SECURITY-CODE", {"choice": choice_text})
             if query_mode:
                 try:
