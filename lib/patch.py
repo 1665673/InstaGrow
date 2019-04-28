@@ -297,7 +297,7 @@ def login_user(browser,
     # assert password, 'Password not provided'
     #
     query_mode = env.args().query
-    without_cookies = env.args().without_cookies
+    no_cookies = env.args().no_cookies
 
     #
     #
@@ -307,7 +307,7 @@ def login_user(browser,
     #
     #
     cookie_loaded = False
-    if not without_cookies:
+    if not no_cookies:
         super_print("[login_user] loading cookies")
         env.event("LOGIN", "LOADING-COOKIES")
         try:
@@ -728,8 +728,8 @@ def login_user(browser,
 
             try:
                 success_selector = "//img[@class='_6q-tv']"
-                fail_selector = "//p[text()='Please check the code we sent you and try again.']"
-                indicator_selector = success_selector + "|" + fail_selector
+                # fail_selector = "//p[text()='Please check the code we sent you and try again.']"
+                indicator_selector = success_selector  # + "|" + fail_selector
 
                 if not first_attempt:
                     super_print("[login_user] not the first attempt, wait 4 seconds until page fully updated")

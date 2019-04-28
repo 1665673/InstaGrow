@@ -256,7 +256,7 @@ def script_login(instance):
         raise Exception("no-instance")
     if instance in _scripts:
         raise Exception("instance-already-exists")
-    argv = ["login.py", "-wc", "-q", "-ap", "-s", "-i", instance, "-o", _id]
+    argv = ["login.py", "-nc", "-q", "-s", "-i", instance, "-o", _id, "-ap", "all", "login"]
     return _run_script(argv)
 
 
