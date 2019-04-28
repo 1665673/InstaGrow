@@ -531,7 +531,7 @@ def _parse_script_arguments(argv):
     parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
     parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
     parser.add_argument("-ap", "--allocate-proxy", action="store_true")
-    parser.add_argument("-wc", "--without-cookies", action="store_true")
+    parser.add_argument("-nc", "--no-cookies", action="store_true")
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     return parser.parse_args(argv)
