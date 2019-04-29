@@ -8,7 +8,7 @@ import json as _json
 from instapy.util import web_address_navigator
 import os
 import psutil
-import signal
+# import signal
 # import pickle
 import subprocess
 from dotenv import load_dotenv, find_dotenv
@@ -37,6 +37,7 @@ load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 CHECKIN_URL = SERVER + "/admin/check-in"
 DEFAULT_FOLLOWER_TRACKING_GAP = 1800
+QUERY_LATEST_TIMEOUT = 900
 # MACROS
 # DEFAULT_REPORT_FIELDS = {
 #     "instagramUser": "N/A",
@@ -191,6 +192,8 @@ def init_environment(**kw):
     _reporter = reporter.Reporter()
     _stream_for_stderr.set_reporter(_reporter)
     _stream_for_stderr.begin_report(True)
+    _stream_for_stdout.begin_print(True)
+    _stream_for_stderr.begin_print(True)
 
     # process arguments
     process_arguments(**kw)
@@ -257,11 +260,11 @@ def process_arguments(**kw):
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
 
-    # first thing first, if arguments didn't say silent
-    # then enable terminal output
-    if not _args.silent:
-        _stream_for_stdout.begin_print(True)
-        _stream_for_stderr.begin_print(True)
+    # first thing first, if arguments says silent
+    # then disable terminal streams immediately
+    if _args.silent:
+        _stream_for_stdout.begin_print(False)
+        _stream_for_stderr.begin_print(False)
 
     # # see if this is a worker thread...
     # # by default, it's a daemon
@@ -463,9 +466,6 @@ def retrieve_latest(attributes):
     return query_latest_attributes(attributes)
 
 
-QUERY_TIMEOUT = 600
-
-
 def query_latest_attributes(attributes):
     if not _reporter:
         return None
@@ -476,7 +476,7 @@ def query_latest_attributes(attributes):
     while True:
         # check for timeout
         cur_time = int(time.time())
-        if cur_time > begin_time + QUERY_TIMEOUT:
+        if cur_time > begin_time + QUERY_LATEST_TIMEOUT:
             raise Exception("query timeout")
         # retrieve new data
         res = _reporter.retrieve(names)
@@ -892,8 +892,15 @@ def create_worker(argv=[]):
 #  subprocess creater for substituting-main-process schema
 #
 def substitute_process(argv=[]):
+    # refine arguments
     if not argv:
         argv = sys.argv
+    else:
+        if ("-s" in sys.argv or "--silent" in sys.argv) \
+                and ("-s" not in argv and "--silent" not in argv):
+            argv += ["-s"]
+
+    # sun subprocess
     python = sys.executable
     os.execl(python, python, *argv)
     # subprocess.Popen(['nohup', 'python3'] + arguments)
