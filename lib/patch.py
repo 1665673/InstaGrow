@@ -1204,7 +1204,7 @@ def web_address_navigator(browser, link):
                 browser.get(link)
                 # update server calls
                 update_activity()
-                sleep(2)
+                # sleep(2)
                 break
 
             except TimeoutException as exc:
@@ -1216,7 +1216,7 @@ def web_address_navigator(browser, link):
                             str(link).encode("utf-8"),
                             str(exc).encode("utf-8")))
                 total_timeouts += 1
-                sleep(2)
+                # sleep(2)
 
 
 def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
