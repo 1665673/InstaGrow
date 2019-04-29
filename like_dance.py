@@ -14,7 +14,6 @@ tags = ['#kpop', '#dancecover', '#kpopdance', ' #kpopdancecover', '#coverdance',
 session = InstaPy(**env.arguments())
 
 with smart_run(session):
-    env.report_success(session)
     while True:
         for tag in tags:
             try:

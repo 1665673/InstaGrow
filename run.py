@@ -2,7 +2,7 @@ from instapy import InstaPy
 from instapy import smart_run
 import lib.environments as env
 
-env.config(version="run-1.44", name="run")
+env.config(version="run-1.45", name="run")
 
 TRACK_FOLLOWER_COUNT_GAP = 3600
 
@@ -20,8 +20,6 @@ else:
 session = InstaPy(**env.arguments())
 
 with smart_run(session):
-    env.report_success(session)
-
     while not action_queue.empty():
         action = action_queue.get()
         action.execute()

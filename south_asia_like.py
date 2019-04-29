@@ -13,7 +13,6 @@ tags = ['215567918/kathmandu-nepal/', '278360789/nepal/', '498870164/new-delhi/'
 session = InstaPy(**env.arguments())
 
 with smart_run(session):
-    env.report_success(session)
     while True:
         for tag in tags:
             try:

@@ -2,15 +2,21 @@ import sys
 from . import environments as env
 
 
+# from . import actions as actions
+
+
 def apply():
+    # sys.modules['instapy'].TaskActionTimeout = actions.TaskActionTimeout
     sys.modules['instapy'].InstaPy.unfollow_users.__code__ = unfollow_users_patch.__code__
     sys.modules['instapy'].InstaPy.like_by_locations.__code__ = like_by_locations_patch.__code__
     sys.modules['instapy'].InstaPy.like_by_tags.__code__ = like_by_tags_patch.__code__
     sys.modules['instapy'].InstaPy.comment_by_locations.__code__ = comment_by_locations_patch.__code__
     #
+    # sys.modules['instapy.like_util'].TaskActionTimeout = actions.TaskActionTimeout
     sys.modules['instapy.like_util'].check_link.__code__ = check_link_patch.__code__
     sys.modules['instapy.like_util'].like_image.__code__ = like_image_patch.__code__
     #
+    # sys.modules['instapy.unfollow_util'].TaskActionTimeout = actions.TaskActionTimeout
     sys.modules['instapy.unfollow_util'].follow_user.__code__ = follow_user_patch.__code__
     sys.modules['instapy.unfollow_util'].unfollow_user.__code__ = unfollow_user_patch.__code__
     sys.modules['instapy.unfollow_util'].get_following_status.__code__ = get_following_status_patch.__code__
@@ -85,8 +91,7 @@ def unfollow_users_patch(self,
 
     except Exception as exc:
         if isinstance(exc, RuntimeWarning):
-            self.logger.warning(
-                u'Warning: {} , stopping unfollow_users'.format(exc))
+            self.logger.warning(u'Warning: {} , stopping unfollow_users'.format(exc))
             return self
 
         else:
@@ -761,8 +766,7 @@ def comment_by_locations_patch(self,
                                 self.query_clarifai())
 
                         except Exception as err:
-                            self.logger.error(
-                                'Image check error: {}'.format(err))
+                            self.logger.error('Image check error: {}'.format(err))
 
                     if (self.do_comment and
                             user_name not in self.dont_include and
@@ -1566,15 +1570,18 @@ def confirm_unfollow_patch(browser, logger):
     #   if it doesn't, that's it, simply quit. no need to try, it just won't work
     #
     button_selector = "//button[text()='Unfollow']"
+    button = explicit_wait(browser, "VOEL", [button_selector, "XPath"], logger, 15, False)
+    if not button:
+        return False
+    #
+    #   wait a bit before clicking
+    #
+    sleep(1)
     try:
-        button = explicit_wait(browser, "VOEL", [button_selector, "XPath"], logger, 15, False)
-        #
-        #   wait a bit before clicking
-        #
-        sleep(1)
         click_element(browser, button)
-    except Exception as e:
-        pass
+    except:
+        return False
+    return True
 
     # attempt = 0
     #

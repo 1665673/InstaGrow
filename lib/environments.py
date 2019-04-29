@@ -46,16 +46,19 @@ DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 #     "proxy": "N/A"
 # }
 
-# declaim a global reporter
+# global variables
+_stream_for_stdout = None
+_stream_for_stderr = None
+_reporter = None
+_reporter_fields = {}
 _login_success = False
 _args = {}
 _arguments = {}
-_reporter = None
-_reporter_fields = {}
 _session = None
 _proxy_in_use = None
 _tasks_dict = None
 _pulled_cookies = None
+_cookies_loaded = False
 _action_statistics = {}
 # declaim a global logger
 logger = logging.getLogger()
@@ -130,10 +133,10 @@ def get_session():
 
 def print_script_info():
     # print information
-    get_stdout().write("version: " + _args.version + "\n")
-    get_stdout().write("browser: " + ("chrome" if _args.chrome else "firefox") + "\n")
-    get_stdout().write("GUI Mode: " + ("gui" if _args.gui else "headless") + "\n")
-    get_stdout().write("\n")
+    print("version: " + _args.version)
+    print("browser: " + ("chrome" if _args.chrome else "firefox"))
+    print("GUI Mode: " + ("gui" if _args.gui else "headless"))
+    print()
 
 
 #
@@ -173,30 +176,29 @@ def config(**kw):
 def init_environment(**kw):
     # process arguments and config related environment
     global _args
+    global _stream_for_stdout
+    global _stream_for_stderr
     global _reporter_fields
     global _reporter
+
+    # redirect streams to StreamHub
+    _stream_for_stdout = reporter.StreamHub()
+    _stream_for_stderr = reporter.StreamHub()
+    sys.stdout = _stream_for_stdout
+    sys.stderr = _stream_for_stderr
+
+    # init reporter for the stderr StreamHub
+    _reporter = reporter.Reporter()
+    _stream_for_stderr.set_reporter(_reporter)
+    _stream_for_stderr.begin_report(True)
 
     # process arguments
     process_arguments(**kw)
 
-    # redirect streams to StreamHub
-    stream = reporter.StreamHub()
-    sys.stderr = stream
-    stream1 = reporter.StreamHub()
-    sys.stdout = stream1
-
-    # setup reporter for StreamHub
-    _reporter = reporter.Reporter()
-    stream.set_reporter(_reporter)
-    stream.begin_report(True)
-
-    if not _args.silent:
-        stream.begin_print(True)
-        stream1.begin_print(True)
-
-    # config reporter fields
+    # with arguments parsed, no we can further config reporter
     _reporter_fields.update({
         "environmentVersion": ENVIRONMENT_VERSION,
+        "arguments": sys.argv,
         "status": "active",
         "instagramUser": _args.username,  # backwards support
         "instagramPassword": _args.password,  # backwards support
@@ -226,6 +228,8 @@ def init_environment(**kw):
 
 def process_arguments(**kw):
     global _args
+    global _stream_for_stdout
+    global _stream_for_stderr
     parser = argparse.ArgumentParser()
     parser.add_argument("username", nargs='?', type=str)
     parser.add_argument("password", nargs='?', type=str)
@@ -252,6 +256,12 @@ def process_arguments(**kw):
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")
     _args = parser.parse_args()
+
+    # first thing first, if arguments didn't say silent
+    # then enable terminal output
+    if not _args.silent:
+        _stream_for_stdout.begin_print(True)
+        _stream_for_stderr.begin_print(True)
 
     # # see if this is a worker thread...
     # # by default, it's a daemon
@@ -503,14 +513,8 @@ def report_success(session):
     else:
         update_attributes["loginResult"] = "success-with-cookie"
 
+    info("[report_success] login success status synchronized with main server")
     update(update_attributes)
-
-
-def upload_cookies(session):
-    # username = session.username
-    # logfolder = "~/InstaPy/logs/" + username + "/"
-    # cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
-    _reporter.update({"cookies": session.browser.get_cookies()})
 
 
 def get_memory_usage():
@@ -577,6 +581,7 @@ def event_handler(type, name, data):
             url = proxy_add_client_url.replace("{string}", data["proxy"])
             postdata = {
                 "id": _reporter.id,
+                "arguments": sys.argv,
                 "time": int(time.time())
             }
             try:
@@ -758,7 +763,21 @@ def do_statistics(action, target, success):
 #
 ip_address_check_url = "https://api.ipify.org/"
 # instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
-instagram_test_url = "https://www.instagram.com/accounts/login/"
+# instagram_test_url = "https://www.instagram.com/accounts/login/"
+
+# use this link to test connection. It's a BAD link. I use it intentionally because a bad link has a shorter response
+instagram_test_url = "https://www.instagram.com/accounts"
+
+
+def upload_cookies(session):
+    # username = session.username
+    # logfolder = "~/InstaPy/logs/" + username + "/"
+    # cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
+    _reporter.update({"cookies": session.browser.get_cookies()})
+
+
+def load_local_cookies(username):
+    return {}
 
 
 def test_connection(browser):

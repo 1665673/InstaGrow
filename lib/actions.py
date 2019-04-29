@@ -1,7 +1,10 @@
 import time
 import datetime
 import sys
+import signal
 from . import environments as env
+
+TASK_ACTION_TIMEOUT = 1
 
 
 def register_handlers():
@@ -141,6 +144,16 @@ def init_comment_by_location(session):
 #
 #
 #
+class TaskActionTimeout(Exception):
+    def __init__(self, message=""):
+        self.message = message
+
+
+def task_action_time_out_handler(*av, **kw):
+    raise TaskActionTimeout("task action timed out!")
+
+
+signal.signal(signal.SIGALRM, task_action_time_out_handler)
 handlers = register_handlers()
 
 
@@ -154,14 +167,20 @@ def execute(action_type, target, ready):
     env.log("now performing action (%s, %s)" % (action_type, target), title="TASK ")
     session = env.get_session()
     try:
+        signal.alarm(TASK_ACTION_TIMEOUT)
         success = handlers[action_type](session, target)
+        signal.alarm(0)
         env.do_statistics(action_type, target, success)
+    # if any exceptions raised, mark this action fail in statistics
     except Exception as e:
         env.do_statistics(action_type, target, False)
-        if not e:
-            e = "action-handler-error"
         env.error(action_type, "exception", str(e))
-        return None
+        # especially, if it's a TaskActionTimeout-Exception
+        # re-start selenium and re-login
+        if isinstance(e, TaskActionTimeout):
+            env.event("TASK", "RESTARTING-SELENIUM")
+            session.set_selenium_local_session()
+            session.login()
 
 
 def init_subtask(handler):

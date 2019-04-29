@@ -17,7 +17,6 @@ users = users_celebrity
 session = InstaPy(**env.arguments())
 
 with smart_run(session):
-    env.report_success(session)
     while True:
         for user in users:
             try:

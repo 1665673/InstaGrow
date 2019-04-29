@@ -29,6 +29,7 @@ def apply():
     sys.modules['instapy.util'].super_print = super_print
     # sys.modules['instapy.util'].smart_run.__code__ = smart_run.__code__
     sys.modules['instapy.util'].check_authorization.__code__ = check_authorization.__code__
+    sys.modules['instapy.util'].web_address_navigator.__code__ = web_address_navigator.__code__
     sys.modules['instapy.util'].explicit_wait.__code__ = explicit_wait.__code__
     sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
     sys.modules['instapy.util'].parse_cli_args.__code__ = parse_cli_args.__code__
@@ -87,6 +88,27 @@ def end(self, threaded_session=False):
         print("\n\n")
 
 
+#
+#
+#
+######################################################################################
+#
+#
+#
+#
+#
+#
+#   patches for instapy.py
+#
+#
+#
+#
+#
+#
+######################################################################################
+#
+#
+#
 def login(self):
     InstaPy.super_print("login(): patched version")
     InstaPy.env.event("LOGIN", "BEGIN")
@@ -130,8 +152,12 @@ def login(self):
         InstaPy.env.safe_quit(self)
 
     else:
+        #
+        #   synchronize success status with main server before raising SUCCESS event
+        #
+        InstaPy.env.report_success(self)
         InstaPy.env.event("LOGIN", "SUCCESS")
-        message = "Login success! synchronizing status with server..."
+        message = "Login success!"
         highlight_print(self.username,
                         message,
                         "login",
@@ -160,6 +186,9 @@ def login(self):
 
 def set_selenium_local_session_patch(self):
     InstaPy.super_print("set_selenium_local_session_patch(): patched version")
+    if self.browser:
+        self.browser.quit()
+        self.browser = None
     #
     #
     #   patch
@@ -186,12 +215,23 @@ def set_selenium_local_session_patch(self):
         using_proxy = bool(alloc_proxy) or bool(self.proxy_address) or (retry_proxy and not first_attempt)
         if using_proxy:
             InstaPy.super_print("[selenium] setting up proxy")
+            #   if we need a new proxy
             if (not first_attempt) or (not self.proxy_address):
+                #  allocate a new proxy, if connection to main server is bad, only 3 attempts allowed
                 if alloc_proxy is not None:
                     group = alloc_proxy[0]
                     tag = alloc_proxy[1]
-                    proxy = self.proxypool.allocate_proxy(group, tag, proxy_string)
-                    if "string" not in proxy:
+                    proxy = {}
+                    allocate_proxy_failed_count = 0
+                    while allocate_proxy_failed_count < 3:
+                        proxy = self.proxypool.allocate_proxy(group, tag, proxy_string)
+                        if "string" not in proxy:
+                            allocate_proxy_failed_count += 1
+                            InstaPy.super_print("[selenium] wait 3 seconds before another attempt of proxy allocation")
+                            sleep(3)
+                        else:
+                            break
+                    if allocate_proxy_failed_count == 3:
                         InstaPy.env.event("SELENIUM", "ALLOCATE-PROXY-FAILED")
                         exit(0)
                     InstaPy.super_print("[selenium] proxy allocated:\n%s\n"
@@ -199,12 +239,16 @@ def set_selenium_local_session_patch(self):
                                         (proxy["string"], proxy["clientsCount"],
                                          proxy["failsCount"], proxy["historyCount"]))
                     proxy_string = proxy["string"]
+                # query a new proxy delivered by main server through script status
                 elif query_mode:
                     InstaPy.env.event("SELENIUM", "WAITING-FOR-PROXY")
                     latest = InstaPy.env.query_latest({"proxy": proxy_string})
                     proxy_string = latest["proxy"]
+                # get a new proxy from shell
                 else:
                     proxy_string = input("input proxy-string:")
+
+            # save the proxy we are using to Instapy object
             self.proxy_string = proxy_string
 
         # create a session with all required arguments
@@ -273,9 +317,31 @@ def set_selenium_local_session_patch(self):
             # if we are still retrying, then close current browser instance and continue
             first_attempt = False
             self.browser.quit()
+            self.browser = None
             InstaPy.env.event("SELENIUM", "RETRY-CREATING-SESSION")
 
 
+#
+#
+#
+######################################################################################
+#
+#
+#
+#
+#
+#
+#   patches for login_util.py
+#
+#
+#
+#
+#
+#
+######################################################################################
+#
+#
+#
 def login_user(browser,
                username,
                password,
@@ -301,10 +367,14 @@ def login_user(browser,
 
     #
     #
-    #
-    #   patch
+    #   patch 2019-04-27
     #   load cookie before doing anything else
     #
+    #   patch 2019-04-28
+    #   this logic moved to an earlier stage, in set_selenium_local_session_patch()
+    #
+    #   patch 2019-04-28-2
+    #   this logic is moved back to here, due to very complicated reasons
     #
     cookie_loaded = False
     if not no_cookies:
@@ -319,8 +389,8 @@ def login_user(browser,
             for cookie in cookies:
                 browser.add_cookie(cookie)
                 cookie_loaded = True
-        except (WebDriverException, OSError, IOError):
-            super_print("[login_user] Cookie file not found, creating cookie...")
+        except Exception as e:
+            super_print("[login_user] loading cookie error: " + str(e))
     else:
         super_print("[login_user] ignored previous cookies")
 
@@ -333,21 +403,25 @@ def login_user(browser,
     # ---------------------------------2019-04-27----------------------------------------
     #   new logic: we directly used the login page to verify connection
     #   so, as long as our code arrives here, we are already in the login page
-    #   just go ahead1
+    #   just go ahead
+    # ---------------------------------2019-04-28----------------------------------------
+    #   no, we can't just go ahead
+    #   we can't use the login page to test connection, due to very complicated reasons
+    #   so at this point, we are not already in the login page,
+    #   we still need to go that page now
     #
     # ig_homepage = "https://www.instagram.com"
-    # ig_homepage = "https://www.instagram.com/accounts/login/"
-    # super_print("[login_user] go to login page:%s" % ig_homepage)
-    # web_address_navigator(browser, ig_homepage)
+    ig_login_page = "https://www.instagram.com/accounts/login/"
+    super_print("[login_user] go to login page: %s" % ig_login_page)
+    web_address_navigator(browser, ig_login_page)
     # ------------------------------------------------------------------------------------
 
+    # ---------------------------------2019-04-27----------------------------------------
     #
     #
     #   wait until the login page is fully loaded
     #
     #
-
-    # ---------------------------------2019-04-27----------------------------------------
     # try:
     #     explicit_wait(browser, "PFL", [], logger, 5)
     #     # login_page_title = "Login"
@@ -389,11 +463,22 @@ def login_user(browser,
     # check if the user IS logged in
     #
     super_print("[login_user] check if already logged in")
-    login_state = check_authorization(browser,
-                                      username,
-                                      "activity counts",
-                                      logger,
-                                      False)
+    #
+    #   patch 2019-04-28
+    #   deprecate InstaPy check_authorization
+    #   use normal page-element-detecting technique to identify login status a bit faster
+    #
+    # login_state = check_authorization(browser,
+    #                                   username,
+    #                                   "activity counts",
+    #                                   logger,
+    #                                   False)
+    login_button_indicator = "//div[text()='Log in']|//div[text()='Log In']"
+    profile_page_indicator = "//img[@class='_6q-tv']"
+    login_state_indicator = login_button_indicator + "|" + profile_page_indicator
+    indicator_ele = explicit_wait(browser, "VOEL", [login_state_indicator, "XPath"], logger, 5, True)
+    login_state = True if indicator_ele.get_attribute("class") == "_6q-tv" else False
+
     if login_state is True:
         super_print("[login_user] logged in!!!")
         # reload_webpage(browser)
@@ -402,11 +487,10 @@ def login_user(browser,
         return [username, password]
     else:
         super_print("[login_user] not logged in, need to enter username/password")
-
-    # if user is still not logged in, then there is an issue with the cookie
-    # so go create a new cookie..
-    if cookie_loaded:
-        super_print("[login_user] Issue with cookie for user {}. Creating new cookie...".format(username))
+        # if user is still not logged in, then there is an issue with the cookie
+        # so go create a new cookie..
+        if cookie_loaded:
+            super_print("[login_user] Issue with cookie for user {}. Creating new cookie...".format(username))
 
     #
     #
@@ -728,15 +812,19 @@ def login_user(browser,
 
             try:
                 success_selector = "//img[@class='_6q-tv']"
-                # fail_selector = "//p[text()='Please check the code we sent you and try again.']"
-                indicator_selector = success_selector  # + "|" + fail_selector
+                fail_selector = "//p[text()='Please check the code we sent you and try again.']"
+                indicator_selector = success_selector + "|" + fail_selector
 
                 if not first_attempt:
                     super_print("[login_user] not the first attempt, wait 4 seconds until page fully updated")
                     sleep(4)
 
                 indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 5, True)
-                if indicator_ele.get_attribute("class") == "success":
+                #
+                #   look at what a fucking ridiculous bug here, if class == "success" ....
+                #
+                # if indicator_ele.get_attribute("class") == "success":
+                if indicator_ele.get_attribute("class") == "_6q-tv":
                     super_print("[login_user] sucurity code went through, login successfully!!!")
                     break
                 else:
@@ -969,6 +1057,67 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
     #
 
 
+def dismiss_get_app_offer(browser, logger):
+    super_print("dismiss_get_app_offer(): patched version")
+    """ Dismiss 'Get the Instagram App' page after a fresh login """
+    offer_elem = "//*[contains(text(), 'Get App')]"
+    dismiss_elem = "//*[contains(text(), 'Not Now')]"
+
+    # wait a bit and see if the 'Get App' offer rises up
+    # offer_loaded = explicit_wait(
+    #    browser, "VOEL", [offer_elem, "XPath"], logger, 5, False)
+
+    # if offer_loaded:
+    try:
+        dismiss_elem = browser.find_element_by_xpath(dismiss_elem)
+        super_print("[get-app-window] %s" % dismiss_elem)
+        click_element(browser, dismiss_elem)
+    except:
+        pass
+
+
+def dismiss_notification_offer(browser, logger):
+    super_print("dismiss_notification_offer(): patched version")
+    """ Dismiss 'Turn on Notifications' offer on session start """
+    offer_elem_loc = "//div/h2[text()='Turn on Notifications']"
+    dismiss_elem_loc = "//button[text()='Not Now']"
+
+    # wait a bit and see if the 'Turn on Notifications' offer rises up
+    # offer_loaded = explicit_wait(
+    #    browser, "VOEL", [offer_elem_loc, "XPath"], logger, 4, False)
+
+    # if offer_loaded:
+    try:
+        dismiss_elem = browser.find_element_by_xpath(dismiss_elem_loc)
+        super_print("[notification-window] %s" % dismiss_elem_loc)
+        click_element(browser, dismiss_elem)
+    except:
+        pass
+
+
+#
+#
+#
+######################################################################################
+#
+#
+#
+#
+#
+#
+#   patches for util.py
+#
+#
+#
+#
+#
+#
+######################################################################################
+#
+#
+#
+
+
 def check_authorization(browser, username, method, logger, notify=True):
     super_print("check_authorization(): patched version")
     """ Check if user is NOW logged in """
@@ -1029,42 +1178,45 @@ def check_authorization(browser, username, method, logger, notify=True):
     return True
 
 
-def dismiss_get_app_offer(browser, logger):
-    super_print("dismiss_get_app_offer(): patched version")
-    """ Dismiss 'Get the Instagram App' page after a fresh login """
-    offer_elem = "//*[contains(text(), 'Get App')]"
-    dismiss_elem = "//*[contains(text(), 'Not Now')]"
+def web_address_navigator(browser, link):
+    """Checks and compares current URL of web page and the URL to be
+    navigated and if it is different, it does navigate"""
+    current_url = get_current_url(browser)
+    total_timeouts = 0
+    page_type = None  # file or directory
 
-    # wait a bit and see if the 'Get App' offer rises up
-    # offer_loaded = explicit_wait(
-    #    browser, "VOEL", [offer_elem, "XPath"], logger, 5, False)
+    # remove slashes at the end to compare efficiently
+    if current_url is not None and current_url.endswith('/'):
+        current_url = current_url[:-1]
 
-    # if offer_loaded:
-    try:
-        dismiss_elem = browser.find_element_by_xpath(dismiss_elem)
-        super_print("[get-app-window] %s" % dismiss_elem)
-        click_element(browser, dismiss_elem)
-    except:
-        pass
+    if link.endswith('/'):
+        link = link[:-1]
+        page_type = "dir"  # slash at the end is a directory
 
+    new_navigation = (current_url != link)
 
-def dismiss_notification_offer(browser, logger):
-    super_print("dismiss_notification_offer(): patched version")
-    """ Dismiss 'Turn on Notifications' offer on session start """
-    offer_elem_loc = "//div/h2[text()='Turn on Notifications']"
-    dismiss_elem_loc = "//button[text()='Not Now']"
+    if current_url is None or new_navigation:
+        link = link + '/' if page_type == "dir" else link  # directory links
+        # navigate faster
 
-    # wait a bit and see if the 'Turn on Notifications' offer rises up
-    # offer_loaded = explicit_wait(
-    #    browser, "VOEL", [offer_elem_loc, "XPath"], logger, 4, False)
+        while True:
+            try:
+                browser.get(link)
+                # update server calls
+                update_activity()
+                sleep(2)
+                break
 
-    # if offer_loaded:
-    try:
-        dismiss_elem = browser.find_element_by_xpath(dismiss_elem_loc)
-        super_print("[notification-window] %s" % dismiss_elem_loc)
-        click_element(browser, dismiss_elem)
-    except:
-        pass
+            except TimeoutException as exc:
+                if total_timeouts >= 7:
+                    raise TimeoutException(
+                        "Retried {} times to GET '{}' webpage "
+                        "but failed out of a timeout!\n\t{}".format(
+                            total_timeouts,
+                            str(link).encode("utf-8"),
+                            str(exc).encode("utf-8")))
+                total_timeouts += 1
+                sleep(2)
 
 
 def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
@@ -1163,7 +1315,7 @@ def explicit_wait(browser, track, ec_params, logger, timeout=5, notify=True):
         wait = WebDriverWait(browser, timeout)
         result = wait.until(condition)
 
-    except Exception as e:
+    except TimeoutException:
         if notify is True:
             logger.info("Timed out with failure while explicitly waiting until {}!\n".format(ec_name))
         return False
