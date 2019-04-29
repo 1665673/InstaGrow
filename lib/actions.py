@@ -4,7 +4,7 @@ import sys
 import signal
 from . import environments as env
 
-TASK_ACTION_TIMEOUT = 1
+TASK_ACTION_TIMEOUT = 60
 
 
 def register_handlers():
