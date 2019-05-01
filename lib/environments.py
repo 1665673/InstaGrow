@@ -31,7 +31,7 @@ from . import tasks
 #
 #
 #
-ENVIRONMENT_VERSION = "0.28"
+ENVIRONMENT_VERSION = "0.29"
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
