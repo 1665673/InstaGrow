@@ -16,6 +16,7 @@ import threading
 import getpass
 from dotenv import load_dotenv, find_dotenv
 import configparser
+from lib.arguments import get_argparser, amend_arguments
 
 load_dotenv(find_dotenv())
 
@@ -505,39 +506,22 @@ def _restore_scripts(scripts):
         for script in scripts:
             if script["instance"] not in _scripts:
                 argv = script["arguments"]
+                #
+                #   do some compatibility job for arguments
+                #   between different version of run.py script
+                #
+                argv = amend_arguments(argv, {
+                    "rc": None,
+                    "rp": [],
+                    "rl": ["1"]
+                }, False)
                 _run_script(argv)
     except Exception as e:
         raise e
 
 
 def _parse_script_arguments(argv):
-    parser = argparse.ArgumentParser()
-    parser.add_argument("username", nargs='?', type=str)
-    parser.add_argument("password", nargs='?', type=str)
-    parser.add_argument("proxy", nargs='?', type=str)
-    parser.add_argument("-w", "--worker", action="store_true")
-    parser.add_argument("-user", "--username1", type=str)
-    parser.add_argument("-pass", "--password1", type=str)
-    parser.add_argument("-proxy", "--proxy1", type=str)
-    parser.add_argument("-c", "--chrome", action="store_true")
-    parser.add_argument("-g", "--gui", action="store_true")
-    parser.add_argument("-o", "--owner", type=str)
-    parser.add_argument("-i", "--instance", type=str)
-    parser.add_argument("-v", "--version", type=str)
-    parser.add_argument("-n", "--name", type=str)
-    parser.add_argument("-t", "--tasks", nargs="+", type=str)
-    parser.add_argument("-p", "--pull", nargs="*", type=str)
-    parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
-    parser.add_argument("-pb", "--pull-by", nargs="+", type=str)
-    parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
-    parser.add_argument("-q", "--query", action="store_true")
-    parser.add_argument("-rp", "--retry-proxy", nargs="?", type=int, const=-1, default=0)
-    parser.add_argument("-rc", "--retry-credentials", nargs="?", type=int, const=-1, default=0)
-    parser.add_argument("-rl", "--retry-login", nargs="?", type=int, const=-1, default=0)
-    parser.add_argument("-nc", "--no-cookies", action="store_true")
-    parser.add_argument("-m", "--merge", nargs="*", type=str)
-    parser.add_argument("-s", "--silent", action="store_true")
-    return parser.parse_args(argv)
+    return get_argparser().parse_args(argv)
 
 
 def _get_memory_usage(pid):
