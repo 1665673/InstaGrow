@@ -199,8 +199,8 @@ def set_selenium_local_session_patch(self):
     #
     #
     query_mode = InstaPy.env.args().query
-    retry_proxy = InstaPy.env.args().retry_proxy == "on"
     alloc_proxy = InstaPy.env.args().allocate_proxy
+    retry_proxy = InstaPy.env.args().retry_proxy
 
     proxy_string = None if not self.proxy_address else "%s:%s:%s:%s" % (
         self.proxy_address, self.proxy_port, self.proxy_username, self.proxy_password)
@@ -307,7 +307,8 @@ def set_selenium_local_session_patch(self):
 
         # if we can confirm it failed
         if failed:
-            # if we don't retry, then raise the exception
+            # if we don't have any retry attempts left, i.e. retry_proxy == 0,
+            # then raise the exception, and quit the login process
             if not retry_proxy:
                 if len(err_msg) > 0:
                     raise InstaPyError(err_msg)
@@ -315,9 +316,12 @@ def set_selenium_local_session_patch(self):
                     raise exception
 
             # if we are still retrying, then close current browser instance and continue
+            retry_proxy -= 1
             first_attempt = False
             self.browser.quit()
             self.browser = None
+            InstaPy.super_print("[selenium] retry connecting with new proxy. {} attempts left"
+                                .format(retry_proxy + 1))
             InstaPy.env.event("SELENIUM", "RETRY-CREATING-SESSION")
 
 
@@ -362,8 +366,9 @@ def login_user(browser,
     # assert username, 'Username not provided'
     # assert password, 'Password not provided'
     #
-    query_mode = env.args().query
     no_cookies = env.args().no_cookies
+    query_mode = env.args().query
+    retry_login = env.args().retry_login
 
     #
     #
@@ -557,7 +562,7 @@ def login_user(browser,
     button_login = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
     super_print("[login_user] located login form-control elements. ready for logging in.")
 
-    retry_credentials = env.args().retry_credentials == "on"
+    retry_credentials = env.args().retry_credentials
     page_after_login = ""
     first_attempt = True
     while True:
@@ -636,27 +641,38 @@ def login_user(browser,
             super_print("[login_user] login result indicator found! class:%s, text:%s"
                         % (indicator_class, indicator_text))
             if indicator_class == "eiCW-":
-                # if arguments says do not retry, then we quit
+                super_print("[login_user] it means wrong-login-credential. ({} retry attempts left)"
+                            .format(retry_credentials))
+                page_after_login = "LOGIN"
+                # if we don't have any retry attempts left, i.e. retry_credentials == 0
+                # then quit the login process
                 if not retry_credentials:
                     return None
-                # otherwise, we keep trying new credentials
-                super_print("[login_user] it's a wrong-login-credential indicator, try again")
+                # otherwise, we try querying and going with credentials
+                # and decrease one remaining attempts
+                retry_credentials -= 1
                 # username = ""
                 # password = ""
                 env.event("LOGIN", "WRONG-CREDENTIALS")
-                page_after_login = "LOGIN"
                 continue
             elif indicator_class == "_6q-tv":
-                super_print("[login_user] it's a login-successful indicator, congratulations!")
+                super_print("[login_user] it means login-successful, congratulations!")
                 page_after_login = "HOME"
                 break
             elif indicator_text == "Send Security Code":
-                super_print("[login_user] it's an authentication-page indicator, need to enter security code")
+                super_print("[login_user] it means authentication-page arrived, need to enter security code")
                 page_after_login = "AUTHENTICATION"
                 break
             elif indicator_ele.get_attribute("name") == "fullName":
-                super_print("[login_user] entered into the blocked version of login page. login failed")
-                return False
+                super_print("[login_user] it means we may be blocked. login failed. ({} login retries left)"
+                            .format(retry_login))
+                if not retry_login:
+                    return None
+                # if we want to give it a re-try, then we must restart the whole thing
+                # and decrease the retry-attempts in new process
+                retry_login -= 1
+                env.event("LOGIN", "RESTARTING-SCRIPT")
+                env.self_restart(None, {"-rl": str(retry_login), "--retry-login": str(retry_login)})
             else:
                 super_print("[login_user] it's an suspicious-page indicator, may simply skip...")
                 page_after_login = "SUSPICIOUS"

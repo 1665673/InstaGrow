@@ -58,7 +58,7 @@ def hold_on(session, target):
 def self_restart(session, target):
     arguments = target
     env.event("SCRIPT", "SELF-RESTARTING", {"arguments": arguments})
-    env.self_restart(session, arguments)
+    env.self_restart(arguments)
 
 
 def self_update(session, target):

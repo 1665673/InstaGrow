@@ -256,7 +256,8 @@ def script_login(instance):
         raise Exception("no-instance")
     if instance in _scripts:
         raise Exception("instance-already-exists")
-    argv = ["login.py", "-nc", "-q", "-s", "-i", instance, "-o", _id, "-ap", "all", "login"]
+    argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2", "-ap", "all", "all",
+            "-i", instance, "-o", _id, "-m", instance]
     return _run_script(argv)
 
 
@@ -270,8 +271,8 @@ def script_start(instance, arguments):
     if len(arguments) < 2:
         raise Exception("not-enough-script-arguments")
     # adjust other script arguments
-    if "-rc" not in arguments and "--retry-credentials" not in arguments:
-        arguments += ["-rc", "off"]
+    if "-rp" not in arguments and "--retry-proxy" not in arguments:
+        arguments += ["-rp", "5"]
     if "-s" not in arguments and "--silent" not in arguments:
         arguments += ["-s"]
     if "-i" not in arguments and "--instance" not in arguments:
@@ -514,6 +515,7 @@ def _parse_script_arguments(argv):
     parser.add_argument("username", nargs='?', type=str)
     parser.add_argument("password", nargs='?', type=str)
     parser.add_argument("proxy", nargs='?', type=str)
+    parser.add_argument("-w", "--worker", action="store_true")
     parser.add_argument("-user", "--username1", type=str)
     parser.add_argument("-pass", "--password1", type=str)
     parser.add_argument("-proxy", "--proxy1", type=str)
@@ -527,10 +529,11 @@ def _parse_script_arguments(argv):
     parser.add_argument("-p", "--pull", nargs="*", type=str)
     parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
     parser.add_argument("-pb", "--pull-by", nargs="+", type=str)
+    parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
     parser.add_argument("-q", "--query", action="store_true")
-    parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
-    parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
-    parser.add_argument("-ap", "--allocate-proxy", action="store_true")
+    parser.add_argument("-rp", "--retry-proxy", nargs="?", type=int, const=-1, default=0)
+    parser.add_argument("-rc", "--retry-credentials", nargs="?", type=int, const=-1, default=0)
+    parser.add_argument("-rl", "--retry-login", nargs="?", type=int, const=-1, default=0)
     parser.add_argument("-nc", "--no-cookies", action="store_true")
     parser.add_argument("-m", "--merge", nargs="*", type=str)
     parser.add_argument("-s", "--silent", action="store_true")

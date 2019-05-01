@@ -53,6 +53,7 @@ _stream_for_stderr = None
 _reporter = None
 _reporter_fields = {}
 _login_success = False
+_argparser = None
 _args = {}
 _arguments = {}
 _session = None
@@ -103,10 +104,10 @@ def checkin():
     if _args.merge is None:
         _reporter.checkin(CHECKIN_URL, _reporter_fields)
     else:
-        if len(_args.merge) == 0 or len(_args.merge[0]) != 24:
+        if _args.merge == "":
             _reporter.checkin(CHECKIN_URL, {"instagramUser": _reporter_fields["instagramUser"]})
         else:
-            _reporter.checkin(CHECKIN_URL, {"_id": _args.merge[0]})
+            _reporter.checkin(CHECKIN_URL, {"instance": _args.merge})
         _reporter.update(_reporter_fields)
 
 
@@ -230,6 +231,7 @@ def init_environment(**kw):
 
 
 def process_arguments(**kw):
+    global _argparser
     global _args
     global _stream_for_stdout
     global _stream_for_stderr
@@ -251,13 +253,15 @@ def process_arguments(**kw):
     parser.add_argument("-p", "--pull", nargs="*", type=str)
     parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
     parser.add_argument("-pb", "--pull-by", nargs="+", type=str)
-    parser.add_argument("-q", "--query", action="store_true")
-    parser.add_argument("-rp", "--retry-proxy", type=str, default="on")
-    parser.add_argument("-rc", "--retry-credentials", type=str, default="on")
     parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
+    parser.add_argument("-q", "--query", action="store_true")
+    parser.add_argument("-rp", "--retry-proxy", nargs="?", type=int, const=-1, default=0)
+    parser.add_argument("-rc", "--retry-credentials", nargs="?", type=int, const=-1, default=0)
+    parser.add_argument("-rl", "--retry-login", nargs="?", type=int, const=-1, default=0)
     parser.add_argument("-nc", "--no-cookies", action="store_true")
-    parser.add_argument("-m", "--merge", nargs="*", type=str)
+    parser.add_argument("-m", "--merge", nargs="?", type=str, const="")
     parser.add_argument("-s", "--silent", action="store_true")
+    _argparser = parser
     _args = parser.parse_args()
 
     # first thing first, if arguments says silent
@@ -296,8 +300,8 @@ def process_arguments(**kw):
         _args.proxy = _args.proxy1
 
     # merge named parameters **kw into command line arguments
-    if "version" not in kw:
-        kw["version"] = "unknown-version"
+    # if "version" not in kw:
+    #     kw["version"] = "unknown-version"
     # if "type" not in kw:
     #     kw["type"] = "unknown-type"
     for key in kw:
@@ -319,14 +323,14 @@ def process_arguments(**kw):
         pull.userdata(_args.username, _args.pull, _args.pull_by, _args.__dict__)
 
     # set a temporary username if it's currently absent
-    if not _args.username:
-        _args.username = "unknown-user"
+    # if not _args.username:
+    #     _args.username = "unknown-user"
 
     # setup arguments for __init__ InstaPy
     global _arguments
     _arguments = {
-        "username": _args.username,
-        "password": _args.password,
+        "username": _args.username if _args.username is not None else "unknown-user",
+        "password": _args.password if _args.password is not None else "",
         "bypass_suspicious_attempt": True,
         "headless_browser": True if not _args.gui else False,
         "use_firefox": True if not _args.chrome else False,
@@ -888,26 +892,51 @@ def create_worker(argv=[]):
     subprocess.Popen(['python3'] + argv)
 
 
+def amend_arguments(argv, amendments, upsert=False):
+    argv = argv.copy()
+    for key in amendments:
+        value = amendments[key]
+        if value is not None and not isinstance(value, list):
+            value = [value]
+        i = 0
+        updated = False
+        while i < len(argv):
+            if key == argv[i]:
+                # amend values of this argument
+                j = i + 1
+                # firstly, delete original associated sub arguments
+                while j < len(argv) and argv[j][0] != '-':
+                    del argv[j]
+                # delete whole arguments, or append new sub arguments
+                if value is None:
+                    del argv[i]
+                else:
+                    for k in range(len(value)):
+                        argv.insert(j + k, value[k])
+                # break the inner loop. amendments for current key is done
+                updated = True
+                break
+            i += 1
+        if not updated and upsert:
+            argv += [key] + (value if value is not None else [])
+    return argv
+
+
 #
 #  subprocess creater for substituting-main-process schema
 #
-def substitute_process(argv=[]):
-    # refine arguments
-    if not argv:
-        argv = sys.argv
-    else:
-        if ("-s" in sys.argv or "--silent" in sys.argv) \
-                and ("-s" not in argv and "--silent" not in argv):
-            argv += ["-s"]
-
-    # sun subprocess
+def substitute_process(argv=None):
+    event("SESSION", "SCRIPT-STARTING", {"arguments": argv})
     python = sys.executable
     os.execl(python, python, *argv)
     # subprocess.Popen(['nohup', 'python3'] + arguments)
 
 
-def self_restart(session, argv):
-    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string})
+def self_restart(argv=None, argv_amendments={}, argv_upsert=False):
+    #
+    #   clean up
+    #
+    event("SESSION", "SCRIPT-QUITTING", {"proxy": _proxy_in_use, "arguments": argv})
     kill_all_child_processes()
     #
     # # deamon-worker
@@ -915,7 +944,18 @@ def self_restart(session, argv):
     # psutil.Process().kill()
     #
 
-    # substituting
+    # check arguments
+    if not argv:
+        argv = sys.argv
+    else:
+        # mandatory inherit the silent option
+        if ("-s" in sys.argv or "--silent" in sys.argv) \
+                and ("-s" not in argv and "--silent" not in argv):
+            argv += ["-s"]
+
+    # amend arguments
+    argv = amend_arguments(argv, argv_amendments, argv_upsert)
+    # substituting processes
     substitute_process(argv)
 
 
