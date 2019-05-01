@@ -904,7 +904,10 @@ def login_user(browser,
     # dismiss_notification_offer(browser, logger)
     super_print("[login_user] dump cookie")
     env.event("LOGIN", "DUMPING-COOKIES")
-    pickle.dump(browser.get_cookies(), open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+    try:
+        pickle.dump(browser.get_cookies(), open('{0}{1}_cookie.pkl'.format(logfolder, username), 'wb'))
+    except Exception as e:
+        env.error("dumping-cookies", "exception", str(e))
     # print(browser.get_cookies())
     return [username, password]
 
