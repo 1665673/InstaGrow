@@ -478,24 +478,32 @@ def login_user(browser,
     #                                   "activity counts",
     #                                   logger,
     #                                   False)
-    login_button_indicator = "//div[text()='Log in']|//div[text()='Log In']"
-    profile_page_indicator = "//img[@class='_6q-tv']"
-    login_state_indicator = login_button_indicator + "|" + profile_page_indicator
-    indicator_ele = explicit_wait(browser, "VOEL", [login_state_indicator, "XPath"], logger, 5, True)
-    login_state = True if indicator_ele.get_attribute("class") == "_6q-tv" else False
+    login_button_selector = "//div[text()='Log in']|//div[text()='Log In']"
+    profile_page_selector = "//img[@class='_6q-tv']"
+    suspicious_page_selector = "//button[text()='Close']|//button[text()='This Was Me']"
+    login_state_selector = login_button_selector + "|" + profile_page_selector + "|" + suspicious_page_selector
+    indicator_ele = explicit_wait(browser, "VOEL", [login_state_selector, "XPath"], logger, 5, True)
 
-    if login_state is True:
+    indicator_class = indicator_ele.get_attribute("class")
+    indicator_text = indicator_ele.text
+    current_page = None
+
+    if indicator_class == "_6q-tv":
         super_print("[login_user] logged in!!!")
         # reload_webpage(browser)
         # super_print("[login_user] close possible pop-up window at fresh login")
         # dismiss_notification_offer(browser, logger)
         return [username, password]
-    else:
+
+    elif indicator_text == "Log in" or indicator_text == "Log In":
+        current_page = "LOGIN"
         super_print("[login_user] not logged in, need to enter username/password")
         # if user is still not logged in, then there is an issue with the cookie
         # so go create a new cookie..
         if cookie_loaded:
-            super_print("[login_user] Issue with cookie for user {}. Creating new cookie...".format(username))
+            super_print("[login_user] current cookies for {} didn't make a automatic login.".format(username))
+    else:
+        current_page = "SUSPICIOUS"
 
     #
     #
@@ -554,133 +562,130 @@ def login_user(browser,
     #
     #
 
-    # locate login form control elements in the page
-    # input_username_XP = "//input[@name='username']"
-    # explicit_wait(browser, "VOEL", [input_username_XP, "XPath"], logger)
-    input_username = browser.find_element_by_xpath("//input[@name='username']")
-    input_password = browser.find_element_by_xpath("//input[@name='password']")
-    button_login = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
-    super_print("[login_user] located login form-control elements. ready for logging in.")
+    if current_page == "LOGIN":
+        # locate login form control elements in the page
+        # input_username_XP = "//input[@name='username']"
+        # explicit_wait(browser, "VOEL", [input_username_XP, "XPath"], logger)
+        input_username = browser.find_element_by_xpath("//input[@name='username']")
+        input_password = browser.find_element_by_xpath("//input[@name='password']")
+        button_login = browser.find_element_by_xpath("//div[text()='Log in']|//div[text()='Log In']")
+        super_print("[login_user] located login form-control elements. ready for logging in.")
 
-    retry_credentials = env.args().retry_credentials
-    page_after_login = ""
-    first_attempt = True
-    while True:
-        # otherwise, read new username/password
-        if not first_attempt or (not username or not password):
-            if query_mode:
-                env.event("LOGIN", "WAITING-FOR-CREDENTIALS")
-                # query database for latest credentials
-                try:
-                    latest = query_latest({"instagramUser": username, "instagramPassword": password})
-                except:
-                    raise
-                username = latest["instagramUser"]
-                password = latest["instagramPassword"]
-            else:
-                username = str(input("username:"))
-                password = str(input("password:"))
+        retry_credentials = env.args().retry_credentials
+        first_attempt = True
+        while True:
+            # otherwise, read new username/password
+            if not first_attempt or (not username or not password):
+                if query_mode:
+                    env.event("LOGIN", "WAITING-FOR-CREDENTIALS")
+                    # query database for latest credentials
+                    try:
+                        latest = query_latest({"instagramUser": username, "instagramPassword": password})
+                    except:
+                        raise
+                    username = latest["instagramUser"]
+                    password = latest["instagramPassword"]
+                else:
+                    username = str(input("username:"))
+                    password = str(input("password:"))
 
-        # erase first_attempt flag
-        first_attempt = False
+            # fill username/password
+            input_username.clear()
+            input_password.clear()
+            super_print("[login_user] fill username")
+            (ActionChains(browser)
+             .move_to_element(input_username)
+             .click()
+             .send_keys(username)
+             .perform())
 
-        # fill username/password
-        input_username.clear()
-        input_password.clear()
-        super_print("[login_user] fill username")
-        (ActionChains(browser)
-         .move_to_element(input_username)
-         .click()
-         .send_keys(username)
-         .perform())
+            super_print("[login_user] fill password")
+            (ActionChains(browser)
+             .move_to_element(input_password)
+             .click()
+             .send_keys(password)
+             .perform())
 
-        super_print("[login_user] fill password")
-        (ActionChains(browser)
-         .move_to_element(input_password)
-         .click()
-         .send_keys(password)
-         .perform())
+            super_print("[login_user] click login button")
+            (ActionChains(browser)
+             .move_to_element(button_login)
+             .click()
+             .perform())
+            env.event("LOGIN", "CREDENTIALS-SENT")
 
-        super_print("[login_user] click login button")
-        (ActionChains(browser)
-         .move_to_element(button_login)
-         .click()
-         .perform())
-        env.event("LOGIN", "CREDENTIALS-SENT")
+            #
+            #   4 different conditions, after submitting credentials
+            #
+            #   (1) div[@class='eiCW-']: wrong password notification shows up, retry password
+            #
+            #   for whatever other cases, it should indicate a successful login,
+            #   but additional actions may be required:
+            #
+            #   (2) img[@class='_6q-tv']: logged in, avatar shows up, ALL SET!
+            #   (3) button[text()='Send Security Code']: logged in, but authentication page shows up
+            #   (4) other suspicious pages show up: explicit_wait times out
+            #
+            #
+            indicator_selector = "//div[@class='eiCW-']|//img[@class='_6q-tv']|//button[text()='Send Security Code']"
+            suspicious_page_selector = "//button[text()='Close']|//button[text()='This Was Me']"
+            block_selector = "//input[@name='fullName']"
+            indicator_selector = indicator_selector + "|" + suspicious_page_selector + "|" + block_selector
 
-        #
-        #   4 different conditions, after submitting credentials
-        #
-        #   (1) div[@class='eiCW-']: wrong password notification shows up, retry password
-        #
-        #   for whatever other cases, it should indicate a successful login,
-        #   but additional actions may be required:
-        #
-        #   (2) img[@class='_6q-tv']: logged in, avatar shows up, ALL SET!
-        #   (3) button[text()='Send Security Code']: logged in, but authentication page shows up
-        #   (4) other suspicious pages show up: explicit_wait times out
-        #
-        #
-        indicator_selector = "//div[@class='eiCW-']|//img[@class='_6q-tv']|//button[text()='Send Security Code']"
-        suspicious_selector = "//button[text()='Close']|//button[text()='This Was Me']"
-        phone_selector = "//h2[text()='Add Your Phone Number']"
-        block_selector = "//input[@name='fullName']"
-        indicator_selector = indicator_selector + "|" + suspicious_selector + \
-                             "|" + phone_selector + "|" + block_selector
+            try:
+                # if page_after_login is not "", then it's not the first attemp, let wait a bit
+                if not first_attempt:
+                    super_print("[login_user] not the first attempt, wait 3 seconds until page fully updated")
+                    sleep(3)
 
-        try:
-            # if page_after_login is not "", then it's not the first attemp, let wait a bit
-            if page_after_login == "LOGIN":
-                super_print("[login_user] not the first attempt, wait 3 seconds until page fully updated")
-                sleep(3)
+                # erase first_attempt flag
+                first_attempt = False
 
-            indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 5, True)
-            indicator_class = indicator_ele.get_attribute("class")
-            indicator_text = indicator_ele.text
+                indicator_ele = explicit_wait(browser, "VOEL", [indicator_selector, "XPath"], logger, 5, True)
+                indicator_class = indicator_ele.get_attribute("class")
+                indicator_text = indicator_ele.text
 
-            super_print("[login_user] login result indicator found! class:%s, text:%s"
-                        % (indicator_class, indicator_text))
-            if indicator_class == "eiCW-":
-                super_print("[login_user] it means wrong-login-credential. ({} retry attempts left)"
-                            .format(retry_credentials))
-                page_after_login = "LOGIN"
-                # if we don't have any retry attempts left, i.e. retry_credentials == 0
-                # then quit the login process
-                if not retry_credentials:
-                    return None
-                # otherwise, we try querying and going with credentials
-                # and decrease one remaining attempts
-                retry_credentials -= 1
-                # username = ""
-                # password = ""
-                env.event("LOGIN", "WRONG-CREDENTIALS")
+                super_print("[login_user] login result indicator found! class:%s, text:%s"
+                            % (indicator_class, indicator_text))
+                if indicator_class == "eiCW-":
+                    super_print("[login_user] it means wrong-login-credential. ({} retry attempts left)"
+                                .format(retry_credentials))
+                    # if we don't have any retry attempts left, i.e. retry_credentials == 0
+                    # then quit the login process
+                    if not retry_credentials:
+                        return None
+                    # otherwise, we try querying and going with credentials
+                    # and decrease one remaining attempts
+                    retry_credentials -= 1
+                    # username = ""
+                    # password = ""
+                    env.event("LOGIN", "WRONG-CREDENTIALS")
+                    continue
+                elif indicator_class == "_6q-tv":
+                    super_print("[login_user] it means login-successful, congratulations!")
+                    current_page = "HOME"
+                    break
+                elif indicator_text == "Send Security Code":
+                    super_print("[login_user] it means authentication-page arrived, need to enter security code")
+                    current_page = "AUTHENTICATION"
+                    break
+                elif indicator_ele.get_attribute("name") == "fullName":
+                    super_print("[login_user] it means we may be blocked. login failed. ({} login retries left)"
+                                .format(retry_login))
+                    if not retry_login:
+                        return None
+                    # if we want to give it a re-try, then we must restart the whole thing
+                    # and decrease the retry-attempts in new process
+                    retry_login -= 1
+                    env.event("LOGIN", "RESTARTING-SCRIPT")
+                    env.self_restart(None, {"-rl": str(retry_login), "--retry-login": str(retry_login)})
+                else:
+                    super_print("[login_user] it's an suspicious-page indicator, may simply skip...")
+                    current_page = "SUSPICIOUS"
+                    break
+            except Exception:
+                super_print("[login_user] timed out, try again...")
+                current_page = "UNKNOWN"
                 continue
-            elif indicator_class == "_6q-tv":
-                super_print("[login_user] it means login-successful, congratulations!")
-                page_after_login = "HOME"
-                break
-            elif indicator_text == "Send Security Code":
-                super_print("[login_user] it means authentication-page arrived, need to enter security code")
-                page_after_login = "AUTHENTICATION"
-                break
-            elif indicator_ele.get_attribute("name") == "fullName":
-                super_print("[login_user] it means we may be blocked. login failed. ({} login retries left)"
-                            .format(retry_login))
-                if not retry_login:
-                    return None
-                # if we want to give it a re-try, then we must restart the whole thing
-                # and decrease the retry-attempts in new process
-                retry_login -= 1
-                env.event("LOGIN", "RESTARTING-SCRIPT")
-                env.self_restart(None, {"-rl": str(retry_login), "--retry-login": str(retry_login)})
-            else:
-                super_print("[login_user] it's an suspicious-page indicator, may simply skip...")
-                page_after_login = "SUSPICIOUS"
-                break
-        except Exception:
-            super_print("[login_user] timed out, try again...")
-            page_after_login = "UNKNOWN"
-            continue
 
     #
     #
@@ -695,9 +700,9 @@ def login_user(browser,
     #
     #
     #
-    if page_after_login == "HOME":
+    if current_page == "HOME":
         pass
-    elif page_after_login == "AUTHENTICATION":
+    elif current_page == "AUTHENTICATION":
         #
         #
         #   the most complicated part
@@ -863,21 +868,36 @@ def login_user(browser,
         #
         #
         #
-    elif page_after_login == "SUSPICIOUS":
+    elif current_page == "SUSPICIOUS":
         if bypass_suspicious_attempt:
             # super_print("[login_user] no indication of what specific location we're at, let's bypass-suspicious-page")
-            reload_webpage(browser)
+            # reload_webpage(browser)
             # env.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
             # if not bypass_suspicious_login(browser, bypass_with_mobile):
             #     return False
+            super_print("[login_user] we are in a suspicious page, and decided to process it...")
+            env.event("LOGIN", "BEGIN-BYPASS-SUSPICIOUS-PAGE")
+            suspicious_page_selector = "//button[text()='Close']|//button[text()='This Was Me']"
+            button = explicit_wait(browser, "VOEL", [suspicious_page_selector, "XPath"], logger, 5, True)
+            text = button.text
+            (ActionChains(browser)
+             .move_to_element(button)
+             .click()
+             .perform())
+            if text == "Close":
+                super_print("[login_user] we successfully closed a 'add-phone-number' window")
+            else:
+                super_print("[login_user] we successfully clicked 'this-was-me'")
         else:
-            # super_print("[login_user] no indication of what specific location we're at, let's refresh our browser")
-            reload_webpage(browser)
+            super_print("[login_user] we are at a suspicious page, and decided to skip it...")
+
+        # refresh the browser no matter decided to process the suspicious page or not
+        reload_webpage(browser)
+
+    # we don't know what page we are currently in
     else:
         pass
 
-    # refresh one more time
-    reload_webpage(browser)
     #
     #
     #   I lift up authentication logic to this place, from by-pass-suspicious-page
