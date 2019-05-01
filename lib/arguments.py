@@ -56,6 +56,6 @@ def get_argparser():
     parser.add_argument("-rc", "--retry-credentials", nargs="?", type=int, const=-1, default=0)
     parser.add_argument("-rl", "--retry-login", nargs="?", type=int, const=-1, default=0)
     parser.add_argument("-nc", "--no-cookies", action="store_true")
-    parser.add_argument("-m", "--merge", nargs="*", type=str)
+    parser.add_argument("-m", "--merge", nargs="?", type=str, const="")
     parser.add_argument("-s", "--silent", action="store_true")
     return parser
