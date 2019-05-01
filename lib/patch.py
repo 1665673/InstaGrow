@@ -806,11 +806,12 @@ def login_user(browser,
                  .move_to_element(newcode_link)
                  .click()
                  .perform())
-                env.event("LOGIN", "SECURITY-CODE-GOT-NEW-ONE")
+                env.event("LOGIN", "NEW-SECURITY-CODE-REQUESTED")
                 continue
 
             # skip the code if it's not 6-length digits
             if not security_code.isdigit() or not len(security_code) == 6:
+                env.event("LOGIN", "WRONG-SECURITY-CODE")
                 continue
 
             input_code.clear()
