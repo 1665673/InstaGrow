@@ -511,9 +511,9 @@ def _restore_scripts(scripts):
                 #   between different version of run.py script
                 #
                 argv = amend_arguments(argv, {
-                    "rc": None,
-                    "rp": [],
-                    "rl": ["1"]
+                    "-rc": None,
+                    "-rp": [],
+                    "-rl": ["1"]
                 }, False)
                 _run_script(argv)
     except Exception as e:
