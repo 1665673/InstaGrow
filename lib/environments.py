@@ -493,8 +493,11 @@ def report_success(session):
     else:
         update_attributes["loginResult"] = "success-with-cookie"
 
+    try:
+        update(update_attributes)
+    except Exception as e:
+        error("report-success", "exception", str(e))
     info("[report_success] login success status synchronized with main server")
-    update(update_attributes)
 
 
 def get_memory_usage():
