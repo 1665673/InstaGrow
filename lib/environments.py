@@ -595,7 +595,7 @@ def event_handler(type, name, data):
                 pass
 
 
-    elif type == "SESSION" and name == "SCRIPT-QUITTING":
+    elif type == "SESSION" and name == "QUITTING":
         # report release of proxy, if applicable
         if data["proxy"]:
             url = proxy_delete_client_url.replace("{string}", data["proxy"]).replace("{client_id}", _reporter.id)
@@ -848,7 +848,8 @@ def kill_all_child_processes():
 
 # as signal handlers
 def exit_gracefully_worker(sig, frame):
-    event("SESSION", "SCRIPT-QUITTING", {"proxy": _proxy_in_use, "signal": sig})
+    event("SELENIUM", "SESSION-QUITTING", {"proxy": _proxy_in_use, "signal": sig})
+    event("SCRIPT", "QUITTING", {"signal": sig})
     kill_all_child_processes()
     psutil.Process().kill()
 
@@ -865,7 +866,8 @@ def safe_quit(session, message=""):
     # os.kill(os.getpid(), 3)
 
     # clean-up everything
-    event("SESSION", "SCRIPT-QUITTING", {"proxy": session.proxy_string, "message": message})
+    event("SELENIUM", "SESSION-QUITTING", {"proxy": session.proxy_string, "message": message})
+    event("SCRIPT", "QUITTING", {"message": message})
     kill_all_child_processes()
     psutil.Process().kill()
     # exit(0)
@@ -891,7 +893,7 @@ def create_worker(argv=[]):
 #  subprocess creater for substituting-main-process schema
 #
 def substitute_process(argv=None):
-    event("SESSION", "SCRIPT-STARTING", {"arguments": argv})
+    event("SCRIPT", "STARTING", {"arguments": argv})
     python = sys.executable
     os.execl(python, python, *argv)
     # subprocess.Popen(['nohup', 'python3'] + arguments)
@@ -901,7 +903,8 @@ def self_restart(argv=None, argv_amendments={}, argv_upsert=False):
     #
     #   clean up
     #
-    event("SESSION", "SCRIPT-QUITTING", {"proxy": _proxy_in_use, "arguments": argv})
+    event("SCRIPT", "SELF-RESTARTING", {"arguments": argv})
+    event("SELENIUM", "SESSION-QUITTING", {"proxy": _proxy_in_use, "arguments": argv})
     kill_all_child_processes()
     #
     # # deamon-worker
