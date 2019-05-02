@@ -55,37 +55,44 @@ def query_latest(attributes):
 
 
 def end(self, threaded_session=False):
-    InstaPy.super_print("end(): patched version")
-    InstaPy.super_print("[end] script is quitting")
-    InstaPy.env.event("SESSION", "SCRIPT-QUITTING", {"proxy": self.proxy_string})
+    #
+    #   skip everything here
+    #   now I use my own exit-handler for all these SIGINT, SIGTERM, SIGKILL
+    #   worked much more reliably
+    #
+    return
 
-    """Closes the current session"""
-    Settings.InstaPy_is_running = False
-    close_browser(self.browser, threaded_session, self.logger)
-
-    with interruption_handler():
-        # close virtual display
-        if self.nogui:
-            self.display.stop()
-
-        # write useful information
-        # dump_follow_restriction(self.username,
-        #                         self.logger,
-        #                         self.logfolder)
-        # dump_record_activity(self.username,
-        #                      self.logger,
-        #                      self.logfolder)
-
-        # with open('{}followed.txt'.format(self.logfolder), 'w') \
-        #        as followFile:
-        #    followFile.write(str(self.followed))
-
-        # output live stats before leaving
-        self.live_report()
-
-        message = "Session ended!"
-        highlight_print(self.username, message, "end", "info", self.logger)
-        print("\n\n")
+    # InstaPy.super_print("end(): patched version")
+    # InstaPy.super_print("[end] script is quitting")
+    # InstaPy.env.event("SESSION", "SCRIPT-QUITTING", {"proxy": self.proxy_string})
+    #
+    # """Closes the current session"""
+    # Settings.InstaPy_is_running = False
+    # close_browser(self.browser, threaded_session, self.logger)
+    #
+    # with interruption_handler():
+    #     # close virtual display
+    #     if self.nogui:
+    #         self.display.stop()
+    #
+    #     # write useful information
+    #     # dump_follow_restriction(self.username,
+    #     #                         self.logger,
+    #     #                         self.logfolder)
+    #     # dump_record_activity(self.username,
+    #     #                      self.logger,
+    #     #                      self.logfolder)
+    #
+    #     # with open('{}followed.txt'.format(self.logfolder), 'w') \
+    #     #        as followFile:
+    #     #    followFile.write(str(self.followed))
+    #
+    #     # output live stats before leaving
+    #     self.live_report()
+    #
+    #     message = "Session ended!"
+    #     highlight_print(self.username, message, "end", "info", self.logger)
+    #     print("\n\n")
 
 
 #

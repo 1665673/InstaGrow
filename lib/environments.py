@@ -8,7 +8,7 @@ import json as _json
 from instapy.util import web_address_navigator
 import os
 import psutil
-# import signal
+import signal
 # import pickle
 import subprocess
 from dotenv import load_dotenv, find_dotenv
@@ -183,6 +183,14 @@ def init_environment(**kw):
     global _stream_for_stderr
     global _reporter_fields
     global _reporter
+
+    # exit handlers
+    terminate_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]
+    for sig in terminate_signals:
+        try:
+            signal.signal(sig, exit_gracefully_worker)
+        except:
+            pass
 
     # redirect streams to StreamHub
     _stream_for_stdout = reporter.StreamHub()
@@ -838,6 +846,14 @@ def kill_all_child_processes():
     # parent.kill()
 
 
+# as signal handlers
+def exit_gracefully_worker(sig, frame):
+    event("SESSION", "SCRIPT-QUITTING", {"proxy": _proxy_in_use, "signal": sig})
+    kill_all_child_processes()
+    psutil.Process().kill()
+
+
+# as an action in Task module
 def safe_quit(session, message=""):
     #
     # clean-up handlers had been set,  @ InstaPy.end(), which was also patched,
