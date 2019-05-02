@@ -60,6 +60,8 @@ def end(self, threaded_session=False):
     #   now I use my own exit-handler for all these SIGINT, SIGTERM, SIGKILL
     #   worked much more reliably
     #
+    InstaPy.super_print("[end] script is naturally quitting...")
+    InstaPy.env.event("SESSION", "SCRIPT-QUITTING", {"proxy": self.proxy_string, "message": "script finished"})
     return
 
     # InstaPy.super_print("end(): patched version")
