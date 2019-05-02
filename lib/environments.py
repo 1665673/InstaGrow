@@ -213,10 +213,8 @@ def init_environment(**kw):
         "environmentVersion": ENVIRONMENT_VERSION,
         "arguments": sys.argv,
         "status": "active",
-        "instagramUser": _args.username,  # backwards support
-        "instagramPassword": _args.password,  # backwards support
-        "username": _args.username,
-        "password": _args.password,
+        "instagramUser": _args.username,
+        "instagramPassword": _args.password,
         "systemUser": getpass.getuser(),
         "proxy": _args.proxy,
         "tasks": _args.tasks,
@@ -477,6 +475,33 @@ def query_latest_attributes(attributes):
                 if res[key] != attributes[key]:
                     return res
         time.sleep(1)
+
+
+query_latest_attributes_by_list_url = SERVER + "/admin/retrieve-status/latest-attributes"
+
+
+def query_latest_attributes1(attributes):
+    if not _reporter or not _reporter.id:
+        return None
+    # build up a query
+    id = _reporter.id
+    headers = {'content-type': 'application/json'}
+    url = query_latest_attributes_by_list_url
+    data = {
+        "id": id,
+        "attributes": attributes
+    }
+
+    # keep querying until we get what we care about
+    while True:
+        try:
+            res = requests.post(url=url, data=_json.dumps(data), headers=headers).json()
+            if res != {}:
+                return res
+        except:
+            pass
+        finally:
+            time.sleep(1)
 
 
 def report_success(session):

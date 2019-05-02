@@ -13,6 +13,8 @@ def apply():
     sys.modules['instapy'].InstaPy.env = env
     sys.modules['instapy'].InstaPy.super_print = super_print
     sys.modules['instapy'].InstaPy.proxypool = proxypool
+    sys.modules['instapy'].InstaPy.query_latest = query_latest
+    sys.modules['instapy'].InstaPy.query_latest1 = query_latest1
     sys.modules['instapy'].InstaPy.end.__code__ = end.__code__
     sys.modules['instapy'].InstaPy.login.__code__ = login.__code__
     sys.modules['instapy'].InstaPy.set_selenium_local_session.__code__ = set_selenium_local_session_patch.__code__
@@ -20,6 +22,7 @@ def apply():
     sys.modules['instapy.login_util'].env = env
     sys.modules['instapy.login_util'].super_print = super_print
     sys.modules['instapy.login_util'].query_latest = query_latest
+    sys.modules['instapy.login_util'].query_latest1 = query_latest1
     sys.modules['instapy.login_util'].login_user.__code__ = login_user.__code__
     sys.modules['instapy.login_util'].bypass_suspicious_login.__code__ = bypass_suspicious_login.__code__
     sys.modules['instapy.login_util'].dismiss_get_app_offer.__code__ = dismiss_get_app_offer.__code__
@@ -50,8 +53,14 @@ def super_print(str):
     env.log(str, title="INFO ")
 
 
+# accept a dictionary of attributes, with keys being names and old values being values
 def query_latest(attributes):
     return env.query_latest_attributes(attributes)
+
+
+# accept a list of attributes
+def query_latest1(attributes):
+    return env.query_latest_attributes1(attributes)
 
 
 def end(self, threaded_session=False):
@@ -252,8 +261,9 @@ def set_selenium_local_session_patch(self):
                 # query a new proxy delivered by main server through script status
                 elif query_mode:
                     InstaPy.env.event("SELENIUM", "WAITING-FOR-PROXY")
-                    latest = InstaPy.env.query_latest({"proxy": proxy_string})
-                    proxy_string = latest["proxy"]
+                    # latest = InstaPy.query_latest({"proxy": proxy_string})
+                    latest = InstaPy.query_latest1(["queryProxy"])
+                    proxy_string = latest["queryProxy"]
                 # get a new proxy from shell
                 else:
                     proxy_string = input("input proxy-string:")
@@ -590,11 +600,12 @@ def login_user(browser,
                     env.event("LOGIN", "WAITING-FOR-CREDENTIALS")
                     # query database for latest credentials
                     try:
-                        latest = query_latest({"instagramUser": username, "instagramPassword": password})
+                        # latest = query_latest({"instagramUser": username, "instagramPassword": password})
+                        latest = query_latest1(["queryUsername", "queryPassword"])
                     except:
                         raise
-                    username = latest["instagramUser"]
-                    password = latest["instagramPassword"]
+                    username = latest["queryUsername"]
+                    password = latest["queryPassword"]
                 else:
                     username = str(input("username:"))
                     password = str(input("password:"))
@@ -758,10 +769,11 @@ def login_user(browser,
                     {"name": "1", "value": choices[1].text}
                 ]})
                 try:
-                    latest = query_latest({"authenticationChoice": choice_made})
+                    # latest = query_latest({"authenticationChoice": choice_made})
+                    latest = query_latest1(["queryAuthenticationChoice"])
                 except:
                     raise
-                choice_made = latest["authenticationChoice"]
+                choice_made = latest["queryAuthenticationChoice"]
             else:
                 super_print("[login_user] choose a method to receive security code from instagram:\n0: " +
                             choices[0].text + "\n1: " + choices[1].text)
@@ -808,10 +820,11 @@ def login_user(browser,
             env.event("LOGIN", "WAITING-FOR-SECURITY-CODE", {"choice": choice_text})
             if query_mode:
                 try:
-                    latest = query_latest({"securityCode": security_code})
+                    # latest = query_latest({"securityCode": security_code})
+                    latest = query_latest1(["querySecurityCode"])
                 except:
                     raise
-                security_code = latest["securityCode"]
+                security_code = latest["querySecurityCode"]
             else:
                 security_code = str(input("input security code (NEWONE to get a new one):"))
 
