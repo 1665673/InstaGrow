@@ -840,8 +840,10 @@ def get_follower_num(session):
     try:
         url = followers_count_url.format(session.username)
         data = requests.get(url=url).json()
-        count = data["users"][0]["user"]["follower_count"]
-        return count
+        users = data["users"]
+        for user in users:
+            if user["position"] == 0:
+                return user["user"]["follower_count"]
     except:
         return None
 
