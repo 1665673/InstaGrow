@@ -842,10 +842,12 @@ def get_follower_num(session):
         data = requests.get(url=url).json()
         users = data["users"]
         for user in users:
-            if user["position"] == 0:
+            if user["user"]["username"] == session.username:
+                # print(user["user"]["follower_count"])
                 return user["user"]["follower_count"]
     except:
         return None
+    return None
 
 
 last_track_time = 0
