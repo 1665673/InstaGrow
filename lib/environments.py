@@ -778,11 +778,13 @@ def do_statistics(action, target, success):
 #
 #
 ip_address_check_url = "https://api.ipify.org/"
-# instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
+instagram_test_url = "https://www.instagram.com/web/search/topsearch/?query=kimkardashian"
+
+
 # instagram_test_url = "https://www.instagram.com/accounts/login/"
 
 # use this link to test connection. It's a BAD link. I use it intentionally because a bad link has a shorter response
-instagram_test_url = "https://www.instagram.com/accounts"
+# instagram_test_url = "https://www.instagram.com/accounts"
 
 
 def upload_cookies(session):
@@ -813,23 +815,34 @@ def test_connection(browser):
         raise e
 
 
+followers_count_url = "https://www.instagram.com/web/search/topsearch/?query={}"
+
+
 def get_follower_num(session):
     """Prints and logs the current number of followers to
     a seperate file"""
-    if not session:
-        return None
-
-    user_link = "https://www.instagram.com/{}".format(session.username)
+    # if not session:
+    #     return None
+    #
+    # user_link = "https://www.instagram.com/{}".format(session.username)
+    #
+    # try:
+    #     session.browser.get(user_link)
+    #     followed_by = session.browser.execute_script(
+    #         "return window._sharedData.""entry_data.ProfilePage[0]."
+    #         "graphql.user.edge_followed_by.count")
+    #     return followed_by
+    #
+    # except Exception as e:  # handle the possible `entry_data` error
+    #     error("browser", "exception", str(e))
+    #     return None
 
     try:
-        session.browser.get(user_link)
-        followed_by = session.browser.execute_script(
-            "return window._sharedData.""entry_data.ProfilePage[0]."
-            "graphql.user.edge_followed_by.count")
-        return followed_by
-
-    except Exception as e:  # handle the possible `entry_data` error
-        error("browser", "exception", str(e))
+        url = followers_count_url.format(session.username)
+        data = requests.get(url=url).json()
+        count = data["users"][0]["user"]["follower_count"]
+        return count
+    except:
         return None
 
 
