@@ -47,7 +47,7 @@ _httpd_alive = True
 _id = None
 _scripts = {}
 _report_timer = None
-_gui = False
+_args = None
 
 
 class Server(BaseHTTPRequestHandler):
@@ -332,15 +332,19 @@ def script_restart_all():
 #
 def _run_script(argv):
     global _scripts
+    global _args
     # n = os.fork()
     # if n > 0:
     #     printt("Parent process and id is : ", os.getpid())
     # else:
     #     python = sys.executable
     #     os.execl(python, python, *argv)
-    if _gui:
+    if _args.gui:
         if "-g" not in argv and "--gui" not in argv:
             argv += ["-g"]
+    if _args.allocate_proxy:
+        if "-ap" not in argv and "--allocate-proxy" not in argv:
+            argv += ["-ap"] + _args.allocate_proxy
 
     printt("[run-script]", "about to run this script:\n", str(["python3"] + argv))
 
@@ -690,29 +694,69 @@ def read_config_file(args):
     config_file_path = os.path.dirname(os.path.realpath(__file__)) + "/droplet.ini"
     config.read(config_file_path)
     #
-    #   name
+    #   list of all configurations to process
     #
-    droplet_name = args.name
-    if not droplet_name:
-        if "droplet-name" in config["DEFAULT"] and config["DEFAULT"]["droplet-name"]:
-            droplet_name = config["DEFAULT"]["droplet-name"]
-    if not droplet_name:
-        droplet_name = DEFAULT_SERVER_NAME
-    args.name = droplet_name
-    config["DEFAULT"]["droplet-name"] = args.name
+    configurations = {
+        "name": [str, "droplet-name", DEFAULT_SERVER_NAME],
+        "type": [str, "droplet-type", DEFAULT_SERVER_TYPE],
+        "address": [str, "droplet-address", DEFAULT_SERVER_ADDRESS],
+        "port": [int, "droplet-port", DEFAULT_PORT_NUMBER],
+        "report_interval": [int, "droplet-report-interval", DEFAULT_REPORT_INTERVAL],
+        "allocate_proxy": [list, "script-allocate-proxy", []]
+    }
     #
-    #   type
+    #   process them!
     #
-    droplet_type = args.type
-    if not droplet_type:
-        if "droplet-type" in config["DEFAULT"] and config["DEFAULT"]["droplet-type"]:
-            droplet_type = config["DEFAULT"]["droplet-type"]
-    if not droplet_type:
-        droplet_type = DEFAULT_SERVER_TYPE
-    args.type = droplet_type
-    config["DEFAULT"]["droplet-type"] = args.type
+    for key in configurations:
+        arg_name = key
+        arg_type = configurations[key][0]
+        config_name = configurations[key][1]
+        default_value = configurations[key][2]
+
+        current_value = getattr(args, arg_name)
+        if not current_value:
+            if config_name in config["DEFAULT"] and config["DEFAULT"][config_name]:
+                config_value = config["DEFAULT"][config_name]
+                if arg_type == list:
+                    config_value = config_value.split(' ')
+                elif arg_type == int:
+                    config_value = int(config_value)
+                current_value = config_value
+        if not current_value:
+            current_value = default_value
+        setattr(args, arg_name, current_value)
+
+        current_value_to_save = ' '.join(current_value) if arg_type == list else str(current_value)
+        config["DEFAULT"][config_name] = current_value_to_save
+
+    # write back to config file
     with open(config_file_path, 'w') as configfile:
         config.write(configfile)
+
+    # #
+    # #   name
+    # #
+    # droplet_name = args.name
+    # if not droplet_name:
+    #     if "droplet-name" in config["DEFAULT"] and config["DEFAULT"]["droplet-name"]:
+    #         droplet_name = config["DEFAULT"]["droplet-name"]
+    # if not droplet_name:
+    #     droplet_name = DEFAULT_SERVER_NAME
+    # args.name = droplet_name
+    # config["DEFAULT"]["droplet-name"] = args.name
+    # #
+    # #   type
+    # #
+    # droplet_type = args.type
+    # if not droplet_type:
+    #     if "droplet-type" in config["DEFAULT"] and config["DEFAULT"]["droplet-type"]:
+    #         droplet_type = config["DEFAULT"]["droplet-type"]
+    # if not droplet_type:
+    #     droplet_type = DEFAULT_SERVER_TYPE
+    # args.type = droplet_type
+    # config["DEFAULT"]["droplet-type"] = args.type
+    # with open(config_file_path, 'w') as configfile:
+    #     config.write(configfile)
 
 
 def main():
@@ -726,8 +770,16 @@ def main():
     parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--type", type=str)
+    parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
     parser.add_argument("-ri", "--report-interval", type=int)
     args = parser.parse_args()
+
+    #
+    #   read config file, process 'type' and 'name' argument
+    #
+    read_config_file(args)
+    global _args
+    _args = args
 
     #
     #   see if this process is daemon or worker
@@ -745,34 +797,10 @@ def main():
             time.sleep(10)
 
     #
-    #   if gui, use gui mode to run scripts
-    #   ***for test purpose
-    #
-    global _gui
-    _gui = args.gui
-
-    #
     #   if code goes here, then this is a worker process
     #   get everything ready and start to server!!!
     #
     printt("droplet service [worker] started, pid: {}".format(os.getpid()))
-
-    #
-    #   read config file, process 'type' and 'name' argument
-    #
-    read_config_file(args)
-
-    #
-    #   process other arguments
-    #
-    if not args.address:
-        args.address = DEFAULT_SERVER_ADDRESS
-    if not args.port:
-        args.port = DEFAULT_PORT_NUMBER
-    if not args.type:
-        args.type = DEFAULT_SERVER_TYPE
-    if not args.report_interval:
-        args.report_interval = DEFAULT_REPORT_INTERVAL
 
     #
     #   register graceful quit handler
