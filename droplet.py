@@ -257,8 +257,8 @@ def script_login(instance):
         raise Exception("no-instance")
     if instance in _scripts:
         raise Exception("instance-already-exists")
-    argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2", "-ap", "all", "login",
-            "-i", instance, "-o", _id, "-m", instance]
+    argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
+            "-i", instance, "-o", _id, "-m", instance] + ["-ap"] + _args.allocate_proxy
     return _run_script(argv)
 
 
