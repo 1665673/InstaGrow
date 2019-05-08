@@ -675,7 +675,7 @@ def periodically_report_to_main_server():
 
 def exit_gracefully_daemon(*av, **kw):
     printt("droplet service [daemon] ended, pid: {}".format(os.getpid()))
-    _kill_all_child_processes()
+    # _kill_all_child_processes()
     psutil.Process().kill()
     # exit(0)
     # os.kill(os.getpid(), 9)
