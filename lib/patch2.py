@@ -153,7 +153,7 @@ def like_by_locations_patch(self,
                                                media,
                                                skip_top_posts)
                 random.shuffle(cache)
-                self.cached_like[location] = cache
+                self.cached_like[location] = cache[:int(amount / 5)]
 
         except NoSuchElementException as exc:
             self.logger.warning(
@@ -427,7 +427,7 @@ def like_by_tags_patch(self,
                                           media,
                                           self.logger)
                 random.shuffle(cache)
-                self.cached_like[tag] = cache
+                self.cached_like[tag] = cache[:int(amount / 5)]
 
         except NoSuchElementException:
             self.logger.info('Too few images, skipping this tag')
@@ -687,7 +687,7 @@ def comment_by_locations_patch(self,
                                                 skip_top_posts)
                 #
                 random.shuffle(cached)
-                self.cached_comment[location] = cached
+                self.cached_comment[location] = cached[:int(amount / 5)]
                 #
 
         except NoSuchElementException:

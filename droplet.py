@@ -20,12 +20,12 @@ from lib.arguments import get_argparser, amend_arguments
 
 load_dotenv(find_dotenv())
 
-VERSION = "1.03"
+VERSION = "1.05"
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
 DEFAULT_REPORT_INTERVAL = 30
-DEFAULT_STOP_COOLDOWN = 30
+DEFAULT_STOP_COOLDOWN = 0
 DEFAULT_PORT_NUMBER = 8000
 DEFAULT_SHUTDOWN_DELAY = 5
 DEFAULT_RESTART_DELAY = 5
@@ -258,8 +258,9 @@ def script_login(instance):
     if instance in _scripts:
         raise Exception("instance-already-exists")
     argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
-            "-i", instance, "-o", _id, "-m", instance] + ["-ap"] + _args.allocate_proxy
-    return _run_script(argv)
+            "-i", instance, "-o", _id, "-m", instance]
+    ap = ["-ap"] + _args.allocate_proxy if not _args.no_proxy else []
+    return _run_script(argv + ap)
 
 
 # arguments is a list consumed by subprocess.Popen
@@ -342,17 +343,17 @@ def _run_script(argv):
     if _args.gui:
         if "-g" not in argv and "--gui" not in argv:
             argv += ["-g"]
-    if _args.allocate_proxy:
-        if "-ap" not in argv and "--allocate-proxy" not in argv:
-            argv += ["-ap"] + _args.allocate_proxy
+    # if _args.allocate_proxy:
+    #     if "-ap" not in argv and "--allocate-proxy" not in argv:
+    #         argv += ["-ap"] + _args.allocate_proxy
 
     printt("[run-script]", "about to run this script:\n", str(["python3"] + argv))
 
     # get instance, username and tasks from arguments
-    _args = _parse_script_arguments(argv[1:])  # don't include argv[0] == "run.py" while parsing
-    instance = _args.instance
-    username = _args.username
-    tasks = _args.tasks
+    script_args = _parse_script_arguments(argv[1:])  # don't include argv[0] == "run.py" while parsing
+    instance = script_args.instance
+    username = script_args.username
+    tasks = script_args.tasks
 
     try:
         process = subprocess.Popen(["python3"] + argv,
@@ -771,6 +772,8 @@ def main():
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--type", type=str)
     parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
+    parser.add_argument("-np", "--no-proxy", action="store_true")
+    parser.add_argument("-nr", "--no-restore", action="store_true")
     parser.add_argument("-ri", "--report-interval", type=int)
     args = parser.parse_args()
 
@@ -821,8 +824,9 @@ def main():
     #
     #   load previous scripts
     #
-    _retrieve_and_restore_all_scripts()
-    printt("successfully restored all scripts")
+    if not args.no_restore:
+        _retrieve_and_restore_all_scripts()
+        printt("successfully restored all scripts")
 
     #
     #   start report timer
