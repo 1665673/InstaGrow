@@ -861,7 +861,8 @@ def login_user(browser,
             try:
                 success_selector = "//img[@class='_6q-tv']"
                 fail_selector = "//p[text()='Please check the code we sent you and try again.']"
-                indicator_selector = success_selector + "|" + fail_selector
+                suspicious_page_selector = "//button[text()='Close']|//button[text()='This Was Me']"
+                indicator_selector = success_selector + "|" + fail_selector + "|" + suspicious_page_selector
 
                 if not first_attempt:
                     super_print("[login_user] not the first attempt, wait 4 seconds until page fully updated")
@@ -874,6 +875,12 @@ def login_user(browser,
                 # if indicator_ele.get_attribute("class") == "success":
                 if indicator_ele.get_attribute("class") == "_6q-tv":
                     super_print("[login_user] sucurity code went through, login successfully!!!")
+                    break
+                elif indicator_ele.text == "Close" or indicator_ele.text == "This Was Me":
+                    (ActionChains(browser)
+                     .move_to_element(indicator_ele)
+                     .click()
+                     .perform())
                     break
                 else:
                     first_attempt = False
