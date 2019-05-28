@@ -6,13 +6,13 @@ sub_tasks = [
         "action": "follow-user",
         "targets": ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian', 'arianagrande', 'instagram',
                     'beyonce', 'kyliejennr', 'katyperry', 'therock'],
-        "cool-down": 45,  # 800-follows = 24-hours
+        "cool-down": 100,  # 400-follows = 24-hours
         "delay-upon-completion": 240
     },
     {
         "action": "unfollow-user",
         "targets": ['justinbieber', 'taylorswift', 'selenagomez', 'kimkardashian', 'arianagrande', 'instagram',
                     'beyonce', 'kyliejennr', 'katyperry', 'therock'],
-        "cool-down": 35  # 800-unfollows = 24-hours
+        "cool-down": 90  # 400-follows = 24-hours
     }
 ]
