@@ -11,11 +11,13 @@ apt-get -y install python3-pip
 #apt-get -y install firefox
 apt-get -y install firefox
 apt-get -y remove firefox
-wget https://ftp.mozilla.org/pub/firefox/releases/66.0b9/linux-x86_64/en-US/firefox-66.0b9.tar.bz2
-tar xvf firefox-66.0b9.tar.bz2 -C ./firefox
-mv ./firefox/firefox /usr/lib/firefox
-ln -s /usr/lib/firefox/firefox/firefox /usr/bin/firefox
-apt-mark hold firefox
+if test ! -f ./firefox-66.0b9.tar.bz2; then
+    wget https://ftp.mozilla.org/pub/firefox/releases/66.0b9/linux-x86_64/en-US/firefox-66.0b9.tar.bz2
+    tar xvf firefox-66.0b9.tar.bz2 -C ./firefox
+    mv ./firefox/firefox /usr/lib/firefox
+    ln -s /usr/lib/firefox/firefox /usr/bin/firefox
+    apt-mark hold firefox
+fi
 
 cp firefox/geckodriver.ubuntu /usr/local/bin/geckodriver
 
