@@ -30,6 +30,7 @@ def allocate_proxy(group="default", tag="default", exclude=None):
 
     url = allocate_proxy_url.format(group=group, tag=tag, exclude=exclude)
     try:
+        # print(url)
         proxy = requests.get(url=url).json()
     except Exception:
         return ""
@@ -60,13 +61,26 @@ def mark_fail(proxy, client_id="proxypool.py"):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("current_proxy", nargs='?', type=str)
+    parser.add_argument("-d", "--details", action="store_true")
     parser.add_argument("-f", "--fail", action="store_true")
     parser.add_argument("-c", "--client", type=str)
     args = parser.parse_args()
     proxy = args.current_proxy
     client = args.client
+    details = args.details
     if not args.fail:
-        print(allocate_proxy(proxy))
+        allocated = allocate_proxy(proxy)
+        if details:
+            print(allocated)
+        else:
+            print({
+                "id": allocated["_id"],
+                "string": allocated["string"],
+                "clients": len(allocated["clients"]),
+                "fails": len(allocated["fails"]),
+                "history": len(allocated["history"]),
+                "allocateCount": allocated["allocateCount"]
+            })
     else:
         if not proxy:
             print("specify a proxy to mark fail")

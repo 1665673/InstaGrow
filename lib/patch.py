@@ -521,7 +521,7 @@ def login_user(browser,
         # if user is still not logged in, then there is an issue with the cookie
         # so go create a new cookie..
         if cookie_loaded:
-            super_print("[login_user] current cookies for {} didn't make a automatic login.".format(username))
+            super_print("[login_user] current cookies for {} didn't make an automatic login.".format(username))
     else:
         current_page = "SUSPICIOUS"
 
