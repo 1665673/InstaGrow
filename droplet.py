@@ -259,7 +259,7 @@ def script_login(instance):
         raise Exception("instance-already-exists")
     argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
             "-i", instance, "-o", _id, "-m", instance]
-    ap = ["-ap"] + _args.allocate_proxy if not _args.no_proxy else []
+    ap = ["-ap"] + _args.allocate_proxy if _args.use_proxy == "True" else []
     return _run_script(argv + ap)
 
 
@@ -703,7 +703,8 @@ def read_config_file(args):
         "address": [str, "droplet-address", DEFAULT_SERVER_ADDRESS],
         "port": [int, "droplet-port", DEFAULT_PORT_NUMBER],
         "report_interval": [int, "droplet-report-interval", DEFAULT_REPORT_INTERVAL],
-        "allocate_proxy": [list, "script-allocate-proxy", []]
+        "use_proxy": [str, "script-use-proxy", "True"],
+        "allocate_proxy": [list, "script-allocate-proxy", []],
     }
     #
     #   process them!
@@ -715,7 +716,7 @@ def read_config_file(args):
         default_value = configurations[key][2]
 
         current_value = getattr(args, arg_name)
-        if not current_value:
+        if current_value is None:
             if config_name in config["DEFAULT"] and config["DEFAULT"][config_name]:
                 config_value = config["DEFAULT"][config_name]
                 if arg_type == list:
@@ -771,8 +772,8 @@ def main():
     parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--type", type=str)
+    parser.add_argument("-up", "--use-proxy", type=str)
     parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
-    parser.add_argument("-np", "--no-proxy", action="store_true")
     parser.add_argument("-nr", "--no-restore", action="store_true")
     parser.add_argument("-ri", "--report-interval", type=int)
     args = parser.parse_args()
