@@ -18,7 +18,7 @@ fi
 
 rm -rf /usr/lib/firefox
 rm /usr/bin/firefox
-cp ./firefox/firefox /usr/lib/firefox
+cp -r ./firefox/firefox /usr/lib/firefox
 ln -s /usr/lib/firefox/firefox /usr/bin/firefox
 apt-mark hold firefox
 
