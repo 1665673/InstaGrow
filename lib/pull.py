@@ -50,7 +50,7 @@ def get_details_string(data, fields):
             tasks += t + " "
     data["tasks"] = tasks
     data["cookies"] = "[cookie-size: {} entries]".format(len(data["cookies"]) if "cookies" in data else 0)
-    data["tag"] = '--tag "{}"'.format(data["tag"]) if "tasks" in data and data["tasks"] is not None else ""
+    data["tag"] = '--tag "{}"'.format(data["tag"]) if "tag" in data and data["tag"] is not None else ""
 
     for field in all_fields:
         if field not in fields:
