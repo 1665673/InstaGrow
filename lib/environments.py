@@ -37,6 +37,7 @@ ENVIRONMENT_VERSION = "0.29"
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 CHECKIN_URL = SERVER + "/admin/check-in"
+CHECKOUT_URL = SERVER + "/admin/check-out/{}"
 DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 QUERY_LATEST_TIMEOUT = 900
 # MACROS
@@ -110,6 +111,17 @@ def checkin():
         else:
             _reporter.checkin(CHECKIN_URL, {"instance": _args.merge})
         _reporter.update(_reporter_fields)
+
+
+def checkout():
+    global _reporter
+    id = _reporter.id
+    if id:
+        try:
+            url = CHECKOUT_URL.format(id)
+            requests.get(url)
+        except Exception as e:
+            error("REPORTER", "EXCEPTION", str(e))
 
 
 def begin_report(yes_or_no):
@@ -212,12 +224,12 @@ def init_environment(**kw):
     _reporter_fields.update({
         "environmentVersion": ENVIRONMENT_VERSION,
         "arguments": sys.argv,
-        "status": "active",
         "instagramUser": _args.username,
         "instagramPassword": _args.password,
         "systemUser": getpass.getuser(),
         "proxy": _args.proxy,
         "tasks": _args.tasks,
+        "tag": _args.tag,
         "owner": _args.owner,
         "version": _args.version,
         "instance": _args.instance,
@@ -296,7 +308,7 @@ def process_arguments(**kw):
     if _args.pull is not None or _args.pull_exclude is not None:
         # adjust the fields to pull
         if not _args.pull:
-            _args.pull = ['password', 'proxy', 'tasks', 'cookies']
+            _args.pull = ['password', 'proxy', 'tag', 'tasks', 'cookies']
         if _args.pull_exclude:
             for exclude in _args.pull_exclude:
                 if exclude in _args.pull:
@@ -892,6 +904,7 @@ def kill_all_child_processes():
 def exit_gracefully_worker(sig, frame):
     event("SELENIUM", "SESSION-QUITTING", {"proxy": _proxy_in_use, "signal": sig})
     event("SCRIPT", "QUITTING", {"signal": sig})
+    checkout()
     kill_all_child_processes()
     psutil.Process().kill()
 

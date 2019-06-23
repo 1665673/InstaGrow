@@ -47,6 +47,7 @@ def get_argparser():
     parser.add_argument("-v", "--version", type=str)
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--tasks", nargs="+", type=str)
+    parser.add_argument("-tg", "--tag", type=str)
     parser.add_argument("-p", "--pull", nargs="*", type=str)
     parser.add_argument("-pe", "--pull-exclude", nargs="*", type=str)
     parser.add_argument("-pb", "--pull-by", nargs="+", type=str)

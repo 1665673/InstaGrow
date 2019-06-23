@@ -9,6 +9,7 @@ run-1.48
 1.新增半速版本的follow，like脚本
 2.由于最近发生的代理无法连接的问题，install.sh现在固定安装66.0版本的firefox，并阻止自动更新
 3.在login流程中，增加对2-way authentication页面的支持
+4.将tag也作为pull提取内容的一部分。现在的--pull参数将自动提取目标脚本的tag信息
 
 
 droplet-1.05（进行中）

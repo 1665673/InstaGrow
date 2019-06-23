@@ -18,7 +18,7 @@ pull_url = SERVER + "/admin/credentials/pull"
 #    is_module = True
 
 
-all_fields = ["instagramPassword", "proxy", "tasks", "cookies"]
+all_fields = ["instagramPassword", "proxy", "tag", "tasks", "cookies"]
 
 
 #
@@ -50,6 +50,7 @@ def get_details_string(data, fields):
             tasks += t + " "
     data["tasks"] = tasks
     data["cookies"] = "[cookie-size: {} entries]".format(len(data["cookies"]) if "cookies" in data else 0)
+    data["tag"] = '--tag "{}"'.format(data["tag"]) if "tasks" in data and data["tasks"] is not None else ""
 
     for field in all_fields:
         if field not in fields:
@@ -57,9 +58,9 @@ def get_details_string(data, fields):
 
     # print("%s %s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
     #                            data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"]))
-    return "{0} {1} {2} {3} {4}\n" \
+    return "{0} {1} {2} {3} {4} {5}\n" \
         .format(data["instagramUser"], data["instagramPassword"],
-                data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"])
+                data["proxy"] if "proxy" in data else "", data["tag"], data["tasks"], data["cookies"])
 
 
 def restore_cookies(username, cookies):
@@ -106,6 +107,8 @@ def userdata(username, fields, sources=[], env={}):
                 _args.password = data["instagramPassword"]
             if "proxy" in fields and _args.proxy is None and "proxy" in data:
                 _args.proxy = data["proxy"]
+            if "tag" in fields and _args.tag is None and "tag" in data:
+                _args.tag = data["tag"]
             if "tasks" in fields and _args.tasks is None and "tasks" in data:
                 _args.tasks = data["tasks"]
             if "cookies" in fields and "cookies" in data:
