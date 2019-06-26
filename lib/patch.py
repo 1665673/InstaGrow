@@ -610,6 +610,9 @@ def login_user(browser,
                     username = str(input("username:"))
                     password = str(input("password:"))
 
+                # mark this script with lastest username
+                env.update({"instagramUser": username})
+
             # store credentials as an entry in main server
             env.json({"username": username, "password": password}, "credentials")
 
