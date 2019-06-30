@@ -37,6 +37,9 @@ def apply():
     sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
     sys.modules['instapy.util'].parse_cli_args.__code__ = parse_cli_args.__code__
 
+    sys.modules[
+        'instapy.browser'].set_selenium_local_session.__code__ = set_selenium_local_session_browser_patch.__code__
+
 
 #
 #
@@ -345,6 +348,158 @@ def set_selenium_local_session_patch(self):
             InstaPy.env.event("SELENIUM", "RETRY-CREATING-SESSION")
 
 
+def set_selenium_local_session_browser_patch(proxy_address,
+                                             proxy_port,
+                                             proxy_username,
+                                             proxy_password,
+                                             proxy_chrome_extension,
+                                             headless_browser,
+                                             use_firefox,
+                                             browser_profile_path,
+                                             disable_image_load,
+                                             page_delay,
+                                             logger):
+    """Starts local session for a selenium server.
+    Default case scenario."""
+
+    browser = None
+    err_msg = ''
+
+    if use_firefox:
+        firefox_options = Firefox_Options()
+        if headless_browser:
+            firefox_options.add_argument('-headless')
+
+        if browser_profile_path is not None:
+            firefox_profile = webdriver.FirefoxProfile(
+                browser_profile_path)
+        else:
+            firefox_profile = webdriver.FirefoxProfile()
+
+        if disable_image_load:
+            # permissions.default.image = 2: Disable images load,
+            # this setting can improve pageload & save bandwidth
+            firefox_profile.set_preference('permissions.default.image', 2)
+
+        if proxy_address and proxy_port:
+            firefox_profile.set_preference('network.proxy.type', 1)
+            firefox_profile.set_preference('network.proxy.http',
+                                           proxy_address)
+            firefox_profile.set_preference('network.proxy.http_port',
+                                           proxy_port)
+            firefox_profile.set_preference('network.proxy.ssl',
+                                           proxy_address)
+            firefox_profile.set_preference('network.proxy.ssl_port',
+                                           proxy_port)
+
+        # change user-agent
+        firefox_profile.set_preference("general.useragent.override",
+                                       "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14.5; rv:66.0) Gecko/20100101 Firefox/66.0")
+
+        browser = webdriver.Firefox(firefox_profile=firefox_profile,
+                                    options=firefox_options)
+
+        # converts to custom browser
+        # browser = convert_selenium_browser(browser)
+
+        # authenticate with popup alert window
+        if (proxy_username and proxy_password):
+            proxy_authentication(browser,
+                                 logger,
+                                 proxy_username,
+                                 proxy_password)
+
+    else:
+        chromedriver_location = get_chromedriver_location()
+        print(chromedriver_location)
+        chrome_options = Options()
+        chrome_options.add_argument('--mute-audio')
+        chrome_options.add_argument('--dns-prefetch-disable')
+        chrome_options.add_argument('--lang=en-US')
+        chrome_options.add_argument('--disable-setuid-sandbox')
+        chrome_options.add_argument('disable-infobars')
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+
+        # this option implements Chrome Headless, a new (late 2017)
+        # GUI-less browser. chromedriver 2.9 and above required
+        if headless_browser:
+            chrome_options.add_argument('--headless')
+            chrome_options.add_argument('--no-sandbox')
+
+            if disable_image_load:
+                chrome_options.add_argument(
+                    '--blink-settings=imagesEnabled=false')
+
+            # replaces browser User Agent from "HeadlessChrome".
+            user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36"
+            chrome_options.add_argument('user-agent={user_agent}'
+                                        .format(user_agent=user_agent))
+
+        capabilities = DesiredCapabilities.CHROME
+
+        # Proxy for chrome
+        if proxy_address and proxy_port:
+            prox = Proxy()
+            proxy = ":".join([proxy_address, str(proxy_port)])
+            if headless_browser:
+                chrome_options.add_argument(
+                    '--proxy-server=http://{}'.format(proxy))
+            else:
+                prox.proxy_type = ProxyType.MANUAL
+                prox.http_proxy = proxy
+                prox.socks_proxy = proxy
+                prox.ssl_proxy = proxy
+                prox.add_to_capabilities(capabilities)
+
+        # add proxy extension
+        if proxy_chrome_extension and not headless_browser:
+            chrome_options.add_extension(proxy_chrome_extension)
+
+        # using saved profile for chrome
+        if browser_profile_path is not None:
+            chrome_options.add_argument(
+                'user-data-dir={}'.format(browser_profile_path))
+
+        chrome_prefs = {
+            'intl.accept_languages': 'en-US',
+        }
+
+        if disable_image_load:
+            chrome_prefs['profile.managed_default_content_settings.images'] = 2
+
+        chrome_options.add_experimental_option('prefs', chrome_prefs)
+        try:
+            browser = webdriver.Chrome(chromedriver_location,
+                                       desired_capabilities=capabilities,
+                                       chrome_options=chrome_options)
+
+            # gets custom instance
+            # browser = convert_selenium_browser(browser)
+
+        except WebDriverException as exc:
+            logger.exception(exc)
+            err_msg = 'ensure chromedriver is installed at {}'.format(
+                Settings.chromedriver_location)
+            return browser, err_msg
+
+        # prevent: Message: unknown error: call function result missing 'value'
+        matches = re.match(r'^(\d+\.\d+)',
+                           browser.capabilities['chrome'][
+                               'chromedriverVersion'])
+        if float(matches.groups()[0]) < Settings.chromedriver_min_version:
+            err_msg = 'chromedriver {} is not supported, expects {}+'.format(
+                float(matches.groups()[0]), Settings.chromedriver_min_version)
+            return browser, err_msg
+
+    browser.implicitly_wait(page_delay)
+
+    message = "Session started!"
+    highlight_print('browser', message, "initialization", "info", logger)
+    print('')
+
+    return browser, err_msg
+
+
 #
 #
 #
@@ -412,8 +567,11 @@ def login_user(browser,
             else:
                 cookies = pickle.load(open('{0}{1}_cookie.pkl'.format(logfolder, username), 'rb'))
             for cookie in cookies:
+                # print(cookie["name"])
+                if cookie["name"] == "urlgen":
+                    continue
                 browser.add_cookie(cookie)
-                cookie_loaded = True
+            cookie_loaded = True
         except Exception as e:
             super_print("[login_user] loading cookie error: " + str(e))
     else:
@@ -1289,6 +1447,11 @@ def web_address_navigator(browser, link):
         while True:
             try:
                 browser.get(link)
+                # injected_javascript = ('Object.defineProperties(navigator, {webdriver:{get:()=>undefined}});')
+                # if link not in ["https://www.instagram.com/web/search/topsearch/?query=kimkardashian",
+                #                 "https://api.ipify.org/"]:
+                #     browser.execute_async_script(injected_javascript)
+
                 # update server calls
                 update_activity()
                 # sleep(2)

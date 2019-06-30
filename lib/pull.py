@@ -41,7 +41,7 @@ def get_data(username, sources=[], env={}):
             return {}
 
 
-def get_details_string(data, fields):
+def get_details_string(data, fields, details=False):
     data = copy.copy(data)
     tasks = ""
     if "tasks" in data and data["tasks"] is not None:
@@ -49,18 +49,21 @@ def get_details_string(data, fields):
         for t in data["tasks"]:
             tasks += t + " "
     data["tasks"] = tasks
-    data["cookies"] = "[cookie-size: {} entries]".format(len(data["cookies"]) if "cookies" in data else 0)
+    data["cookies1"] = "[cookie-size: {} entries]".format(len(data["cookies"]) if "cookies" in data else 0)
     data["tag"] = '--tag "{}"'.format(data["tag"]) if "tag" in data and data["tag"] is not None else ""
 
     for field in all_fields:
         if field not in fields:
             data[field] = ""
 
+    if details:
+        data["cookies1"] = data["cookies1"] + "\n" + json.dumps(data["cookies"])
+
     # print("%s %s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
     #                            data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"]))
     return "{0} {1} {2} {3} {4} {5}\n" \
         .format(data["instagramUser"], data["instagramPassword"],
-                data["proxy"] if "proxy" in data else "", data["tag"], data["tasks"], data["cookies"])
+                data["proxy"] if "proxy" in data else "", data["tag"], data["tasks"], data["cookies1"])
 
 
 def restore_cookies(username, cookies):
@@ -124,13 +127,14 @@ def main():
     parser.add_argument("username", type=str)
     parser.add_argument("-v", "--version", nargs='?', type=str)
     parser.add_argument("-t", "--tasks", nargs='?', type=str)
+    parser.add_argument("-d", "--details", action="store_true")
     args = parser.parse_args()
     username = args.username
     sources = ["version", "tasks"]
 
     data = get_data(username, sources, args.__dict__)
     if "instagramUser" in data:
-        print(get_details_string(data, all_fields))
+        print(get_details_string(data, all_fields, args.details))
     else:
         print("no credentials available from server")
 
