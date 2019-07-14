@@ -356,7 +356,7 @@ def _run_script(argv):
     tasks = script_args.tasks
 
     try:
-        process = subprocess.Popen(["python3"] + argv,
+        process = subprocess.Popen(' '.join(["python3"] + argv),
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
                                    stdin=subprocess.PIPE,
