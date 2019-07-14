@@ -421,12 +421,13 @@ def set_selenium_local_session_browser_patch(proxy_address,
         chrome_options.add_argument('--disable-setuid-sandbox')
         chrome_options.add_argument('disable-infobars')
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        chrome_options.add_argument('--no-sandbox')
 
         # this option implements Chrome Headless, a new (late 2017)
         # GUI-less browser. chromedriver 2.9 and above required
         if headless_browser:
             chrome_options.add_argument('--headless')
-            chrome_options.add_argument('--no-sandbox')
+            # chrome_options.add_argument('--no-sandbox')
 
             if disable_image_load:
                 chrome_options.add_argument(
