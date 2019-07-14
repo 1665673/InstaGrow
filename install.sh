@@ -33,6 +33,8 @@ fallocate -l ${SWAP} /swapfile
 chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
+Xvfb :99 &
+export DISPLAY=:99
 
 if test ! -f /etc/rc.local; then
     # echo "rc.local1 does not exists"
