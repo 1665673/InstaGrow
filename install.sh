@@ -34,7 +34,7 @@ chmod 600 /swapfile
 mkswap /swapfile
 swapon /swapfile
 Xvfb :99 &
-export DISPLAY=:99
+#export DISPLAY=:99
 
 if test ! -f /etc/rc.local; then
     # echo "rc.local1 does not exists"
@@ -55,3 +55,6 @@ if ! grep -q "Xvfb" /etc/rc.local; then
     sed -i "s/^exit 0/screen -d -m python3 droplet.py\nexit 0/" /etc/rc.local
 fi
 
+if ! grep -q "DISPLAY" /etc/profile; then
+    sed -i '$s/$/\nexport DISPLAY=:99/' /etc/profile
+fi
