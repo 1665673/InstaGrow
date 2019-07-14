@@ -356,6 +356,8 @@ def _run_script(argv):
     tasks = script_args.tasks
 
     try:
+        env = os.environ.copy()
+        env["DISPLAY"] = ":99"
         process = subprocess.Popen(
             [' '.join(["python3"] + argv)],
             # ["python3"] + argv,
@@ -363,7 +365,7 @@ def _run_script(argv):
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
             shell=True,
-            env={"DISPLAY": ":99"}
+            env=env
         )
 
         script = {
