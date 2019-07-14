@@ -3,6 +3,7 @@ import sys
 from contextlib import contextmanager
 from . import environments as env
 from . import proxypool
+from .proxy_extension import create_proxy_extension
 
 
 #
@@ -39,6 +40,7 @@ def apply():
 
     sys.modules[
         'instapy.browser'].set_selenium_local_session.__code__ = set_selenium_local_session_browser_patch.__code__
+    sys.modules['instapy.browser'].create_proxy_extension = create_proxy_extension
 
 
 #
@@ -411,7 +413,7 @@ def set_selenium_local_session_browser_patch(proxy_address,
 
     else:
         chromedriver_location = get_chromedriver_location()
-        print(chromedriver_location)
+        # print(chromedriver_location)
         chrome_options = Options()
         chrome_options.add_argument('--mute-audio')
         chrome_options.add_argument('--dns-prefetch-disable')
@@ -438,7 +440,7 @@ def set_selenium_local_session_browser_patch(proxy_address,
         capabilities = DesiredCapabilities.CHROME
 
         # Proxy for chrome
-        if proxy_address and proxy_port:
+        if proxy_address and proxy_port and not proxy_username:
             prox = Proxy()
             proxy = ":".join([proxy_address, str(proxy_port)])
             if headless_browser:
@@ -452,6 +454,15 @@ def set_selenium_local_session_browser_patch(proxy_address,
                 prox.add_to_capabilities(capabilities)
 
         # add proxy extension
+        if proxy_username and not headless_browser:
+            proxy = '{0}:{1}@{2}:{3}'.format(proxy_username,
+                                             proxy_password,
+                                             proxy_address,
+                                             proxy_port)
+            proxy_chrome_extension = create_proxy_extension(proxy)
+            import os
+            proxy_chrome_extension = "{0}/{1}".format(os.getcwd(), proxy_chrome_extension)
+
         if proxy_chrome_extension and not headless_browser:
             chrome_options.add_extension(proxy_chrome_extension)
 
