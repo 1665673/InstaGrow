@@ -8,6 +8,9 @@ fi
 apt-get -y update
 apt-get -y install python3-pip
 
+# headless X-11
+apt-get -y install xvfb
+
 #apt-get -y install firefox
 apt-get -y install firefox
 apt-get -y remove firefox
@@ -40,10 +43,13 @@ chown root:root /etc/rc.local
 chmod 755 /etc/rc.local
 systemctl enable rc-local.service
 
-if ! grep -q "droplet.py" /etc/rc.local; then
+if ! grep -q "Xvfb" /etc/rc.local; then
     dir=$(echo $PWD | sed 's/\//\\\//g')
     #sed -i "s/^exit 0/swapon \/swapfile\ncd $dir\npython3 droplet.py\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/swapon \/swapfile\nexit 0/" /etc/rc.local
+    sed -i "s/^exit 0/Xvfb :99 &\nexit 0/" /etc/rc.local
+    sed -i "s/^exit 0/export DISPLAY=:99\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/cd $dir\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/screen -d -m python3 droplet.py\nexit 0/" /etc/rc.local
 fi
+
