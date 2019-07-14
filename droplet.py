@@ -359,7 +359,8 @@ def _run_script(argv):
         process = subprocess.Popen(["python3"] + argv,
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
-                                   stdin=subprocess.PIPE)
+                                   stdin=subprocess.PIPE,
+                                   shell=True)
 
         script = {
             "arguments": argv,
