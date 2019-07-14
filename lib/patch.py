@@ -480,7 +480,7 @@ def set_selenium_local_session_browser_patch(proxy_address,
 
         chrome_options.add_experimental_option('prefs', chrome_prefs)
         try:
-            browser = webdriver.Chrome(chromedriver_location,
+            browser = webdriver.Chrome("/usr/local/bin/chromedriver",
                                        desired_capabilities=capabilities,
                                        chrome_options=chrome_options)
 

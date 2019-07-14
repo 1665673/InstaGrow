@@ -26,6 +26,7 @@ ln -s /usr/lib/firefox/firefox /usr/bin/firefox
 apt-mark hold firefox
 
 cp firefox/geckodriver.ubuntu /usr/local/bin/geckodriver
+cp chrome/chromedriver_linux64 /usr/local/bin/chromedriver
 
 pip3 install -r requirements.txt
 
