@@ -50,7 +50,7 @@ if ! grep -q "Xvfb" /etc/rc.local; then
     #sed -i "s/^exit 0/swapon \/swapfile\ncd $dir\npython3 droplet.py\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/swapon \/swapfile\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/Xvfb :99 &\nexit 0/" /etc/rc.local
-    sed -i "s/^exit 0/export DISPLAY=:99\nexit 0/" /etc/rc.local
+    #sed -i "s/^exit 0/export DISPLAY=:99\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/cd $dir\nexit 0/" /etc/rc.local
     sed -i "s/^exit 0/screen -d -m python3 droplet.py\nexit 0/" /etc/rc.local
 fi
