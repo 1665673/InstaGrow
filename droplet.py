@@ -360,7 +360,8 @@ def _run_script(argv):
                                    stdout=subprocess.PIPE,
                                    stderr=subprocess.PIPE,
                                    stdin=subprocess.PIPE,
-                                   shell=True)
+                                   shell=True,
+                                   env=os.environ.copy())
 
         script = {
             "arguments": argv,
