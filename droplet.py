@@ -356,12 +356,15 @@ def _run_script(argv):
     tasks = script_args.tasks
 
     try:
-        process = subprocess.Popen([' '.join(["python3"] + argv)],
-                                   stdout=subprocess.PIPE,
-                                   stderr=subprocess.PIPE,
-                                   stdin=subprocess.PIPE,
-                                   shell=True,
-                                   env=os.environ.copy())
+        process = subprocess.Popen(
+            # [' '.join(["python3"] + argv)],
+            ["python3"] + argv,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            stdin=subprocess.PIPE,
+            # shell=True,
+            env=os.environ.copy()
+        )
 
         script = {
             "arguments": argv,

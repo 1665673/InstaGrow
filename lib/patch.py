@@ -37,7 +37,8 @@ def apply():
     sys.modules['instapy.util'].update_activity.__code__ = update_activity.__code__
     sys.modules['instapy.util'].parse_cli_args.__code__ = parse_cli_args.__code__
 
-    sys.modules['instapy.browser'].set_selenium_local_session.__code__ = set_selenium_local_session_browser_patch.__code__
+    sys.modules[
+        'instapy.browser'].set_selenium_local_session.__code__ = set_selenium_local_session_browser_patch.__code__
 
 
 #
@@ -375,7 +376,7 @@ def set_selenium_local_session_browser_patch(proxy_address,
         else:
             firefox_profile = webdriver.FirefoxProfile()
 
-        if disable_image_load:
+        if True:  # disable_image_load:
             # permissions.default.image = 2: Disable images load,
             # this setting can improve pageload & save bandwidth
             firefox_profile.set_preference('permissions.default.image', 2)
