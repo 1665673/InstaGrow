@@ -20,7 +20,7 @@ from lib.arguments import get_argparser, amend_arguments
 
 load_dotenv(find_dotenv())
 
-VERSION = "1.05"
+VERSION = "1.06"
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
@@ -357,13 +357,13 @@ def _run_script(argv):
 
     try:
         process = subprocess.Popen(
-            # [' '.join(["python3"] + argv)],
-            ["python3"] + argv,
+            [' '.join(["python3"] + argv)],
+            # ["python3"] + argv,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            # shell=True,
-            env=os.environ.copy()
+            shell=True,
+            env={"DISPLAY": ":99"}
         )
 
         script = {
