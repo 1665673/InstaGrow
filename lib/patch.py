@@ -378,7 +378,7 @@ def set_selenium_local_session_browser_patch(proxy_address,
         else:
             firefox_profile = webdriver.FirefoxProfile()
 
-        if True:  # disable_image_load:
+        if disable_image_load:
             # permissions.default.image = 2: Disable images load,
             # this setting can improve pageload & save bandwidth
             firefox_profile.set_preference('permissions.default.image', 2)
@@ -423,15 +423,14 @@ def set_selenium_local_session_browser_patch(proxy_address,
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
         chrome_options.add_argument('--no-sandbox')
 
+        if disable_image_load:
+            chrome_options.add_argument('--blink-settings=imagesEnabled=false')
+
         # this option implements Chrome Headless, a new (late 2017)
         # GUI-less browser. chromedriver 2.9 and above required
         if headless_browser:
             chrome_options.add_argument('--headless')
             # chrome_options.add_argument('--no-sandbox')
-
-            if disable_image_load:
-                chrome_options.add_argument(
-                    '--blink-settings=imagesEnabled=false')
 
             # replaces browser User Agent from "HeadlessChrome".
             user_agent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.131 Safari/537.36"

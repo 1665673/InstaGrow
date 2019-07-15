@@ -328,6 +328,7 @@ def process_arguments(**kw):
         "bypass_suspicious_attempt": True,
         "headless_browser": True if not _args.gui else False,
         "use_firefox": True if not _args.chrome else False,
+        "disable_image_load": True if _args.disable_image else False,
     }
     proxy = parse_proxy_keyword(_args.proxy)
     _arguments.update(proxy)
