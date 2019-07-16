@@ -42,6 +42,8 @@ def apply():
         'instapy.browser'].set_selenium_local_session.__code__ = set_selenium_local_session_browser_patch.__code__
     sys.modules['instapy.browser'].create_proxy_extension = create_proxy_extension
 
+    sys.modules['instapy.file_manager'].get_workspace.__code__ = get_workspace.__code__
+
 
 #
 #
@@ -166,12 +168,13 @@ def login(self):
 
     if not logged_in:
         InstaPy.env.event("LOGIN", "FAIL")
-        message = "Wrong login data!"
-        highlight_print(self.username,
-                        message,
-                        "login",
-                        "critical",
-                        self.logger)
+        print("---------------------------------------------------")
+        # message = "Wrong login data!"
+        # highlight_print(self.username,
+        #                 message,
+        #                 "login",
+        #                 "critical",
+        #                 self.logger)
         # self.aborting = True
         InstaPy.env.safe_quit(self)
 
@@ -181,12 +184,13 @@ def login(self):
         #
         InstaPy.env.report_success(self)
         InstaPy.env.event("LOGIN", "SUCCESS")
-        message = "Login success!"
-        highlight_print(self.username,
-                        message,
-                        "login",
-                        "info",
-                        self.logger)
+        print("---------------------------------------------------")
+        # message = "Login success!"
+        # highlight_print(self.username,
+        #                 message,
+        #                 "login",
+        #                 "info",
+        #                 self.logger)
 
         # try to save account progress
         # try:
@@ -504,9 +508,9 @@ def set_selenium_local_session_browser_patch(proxy_address,
 
     browser.implicitly_wait(page_delay)
 
-    message = "Session started!"
-    highlight_print('browser', message, "initialization", "info", logger)
-    print('')
+    # message = "Session started!"
+    # highlight_print('browser', message, "initialization", "info", logger)
+    # print('')
 
     return browser, err_msg
 
@@ -1652,7 +1656,7 @@ def update_activity(action="server_calls"):
 
 
 def parse_cli_args():
-    super_print("[InstaPy] original InstaPy argument parsing disabled")
+    # super_print("[InstaPy] original InstaPy argument parsing disabled")
     args = type('EmptyArgumentsObject', (object,), {})
     args.username = None
     args.password = None
@@ -1731,3 +1735,24 @@ def parse_cli_args():
     # """
     #
     # return args
+
+
+def get_workspace():
+    """ Make a workspace ready for user """
+
+    if WORKSPACE["path"]:
+        workspace = verify_workspace_name(WORKSPACE["path"])
+
+    else:
+        home_dir = get_home_path()
+        workspace = "{}/{}".format(home_dir, WORKSPACE["name"])
+
+    # message = "Workspace in use: \"{}\"".format(workspace)
+    # highlight_print(Settings.profile["name"],
+    #                 message,
+    #                 "workspace",
+    #                 "info",
+    #                 Settings.logger)
+    update_workspace(workspace)
+    update_locations()
+    return WORKSPACE
