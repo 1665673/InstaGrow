@@ -2,6 +2,7 @@ import sys
 import logging
 import getpass
 import requests
+import datetime
 import time
 # import argparse
 import json as _json
@@ -38,6 +39,7 @@ load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 CHECKIN_URL = SERVER + "/admin/check-in"
 CHECKOUT_URL = SERVER + "/admin/check-out/{}"
+GET_UPDATE_WARM_UP_URL = SERVER + "/admin/get-update-warm-up/{0}/{1}/{2}"
 DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 QUERY_LATEST_TIMEOUT = 900
 # MACROS
@@ -64,6 +66,7 @@ _tasks_dict = None
 _pulled_cookies = None
 _cookies_loaded = False
 _action_statistics = {}
+_warm_up = None
 # declaim a global logger
 logger = logging.getLogger()
 
@@ -195,6 +198,7 @@ def init_environment(**kw):
     global _stream_for_stderr
     global _reporter_fields
     global _reporter
+    global _warm_up
 
     # exit handlers
     terminate_signals = [signal.SIGINT, signal.SIGTERM, signal.SIGKILL]
@@ -247,6 +251,10 @@ def init_environment(**kw):
     #
     # _reporter_fields.update(_args.__dict__)
     remove_none(_reporter_fields)
+
+    # set up warm-up
+    if _args.warm_up:
+        _warm_up = get_warm_up_timestamp(_args.username, _args.warm_up)
 
 
 def process_arguments(**kw):
@@ -319,6 +327,19 @@ def process_arguments(**kw):
     # set a temporary username if it's currently absent
     # if not _args.username:
     #     _args.username = "unknown-user"
+
+    # see if warm-up option is present
+    # make sure that it always has 2 components if present
+    if type(_args.warm_up) is list:
+        _args.warm_up = (_args.warm_up + [None] * 2)[0:2]
+        try:
+            _args.warm_up[0] = float(_args.warm_up[0])
+        except:
+            _args.warm_up[0] = 3.0
+        try:
+            _args.warm_up[1] = float(_args.warm_up[1])
+        except:
+            _args.warm_up[1] = 2.0
 
     # setup arguments for __init__ InstaPy
     global _arguments
@@ -656,7 +677,7 @@ def event_handler(type, name, data):
 def load_tasks(tasks_list):
     global _tasks_dict
     try:
-        _tasks_dict = tasks.load_all_task_by_names(tasks_list, task_queued, task_executing, task_finished)
+        _tasks_dict = tasks.load_all_task_by_names(tasks_list, task_queued, task_executing, task_finished, _warm_up)
         action_queue = tasks.ActionQueue()
         add_tasks_to_queue_from_dict(action_queue, _tasks_dict)
         return action_queue
@@ -988,6 +1009,27 @@ def self_update():
     output = process.stderr.read()
     log("output from terminal:\n" + str(output, "utf-8"), title="GIT  ")
     event("SCRIPT", "SELF-UPDATED")
+
+
+def get_warm_up_timestamp(username, warm_up):
+    # full datetime format is 201907161133
+    # till = warm_up
+    #
+    # if len(till) < len("201907161133"):
+    #     days = int(till)
+    #     url = GET_UPDATE_WARM_UP_URL
+    #     # requests.post(url=url, data=json.dumps(data), headers=self.headers).json()
+    # else:
+    #     year, month, day, hour, minute = \
+    #         int(till[0:4]), int(till[4:6]), int(till[6:8]), int(till[8:10]), int(till[10:12])
+    #     till = datetime.datetime(year, month, day, hour, minute).timestamp()
+    #
+    # return int(till)
+    url = GET_UPDATE_WARM_UP_URL.format(username, warm_up[0], warm_up[1])
+    try:
+        return requests.get(url).json()
+    except:
+        return None
 
 
 #

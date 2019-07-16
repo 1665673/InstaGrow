@@ -108,6 +108,23 @@ class Action:
                     # so this iterator reaches the end
                     else:
                         pass
+
+            # adjust self.ready in warm-up mode
+            if self._task().warm_up:
+                begin = self._task().warm_up["begin"]
+                end = self._task().warm_up["end"]
+                rate = self._task().warm_up["rate"]
+                if time.time() < end and begin < end:
+                    # recalculate ready time
+                    ready = self.ready - time.time()
+                    rate = 1.0 + (end - time.time()) / (end - begin) * (rate - 1.0)
+                    ready *= rate
+                    self.ready = time.time() + ready
+                    self.rate = rate
+                else:
+                    self.rate = 1.0
+
+
         except Exception as e:
             pass
 
@@ -140,7 +157,7 @@ class Action:
 
             # execute it
             self.task.executing(action_type, target)
-            result = handlers.execute(action_type, target, self.ready)
+            result = handlers.execute(action_type, target, self.ready, self)
 
             return result
         except Exception as e:
@@ -150,7 +167,7 @@ class Action:
 
 class Task:
     def __init__(self, id, title="no title", loop=True, sub_tasks=[],
-                 on_finished=None, on_executing=None, on_queued=None):
+                 on_finished=None, on_executing=None, on_queued=None, warm_up=None):
         self.id = id
         self.title = title
         self.loop = loop
@@ -158,6 +175,7 @@ class Task:
         self.on_finished = on_finished
         self.on_executing = on_executing
         self.on_queued = on_queued
+        self.warm_up = warm_up
 
         if not self.id:
             raise Exception("invalid task: invalid task-id")
@@ -222,7 +240,7 @@ tasks_dict = {
 """
 
 
-def load_task_from_file(task_path, on_queued=None, on_executing=None, on_finished=None):
+def load_task_from_file(task_path, on_queued=None, on_executing=None, on_finished=None, warm_up=None):
     try:
         module = importlib.import_module(task_path)
     except Exception as e:
@@ -234,14 +252,15 @@ def load_task_from_file(task_path, on_queued=None, on_executing=None, on_finishe
                     sub_tasks=module.sub_tasks,
                     on_queued=on_queued,
                     on_executing=on_executing,
-                    on_finished=on_finished
+                    on_finished=on_finished,
+                    warm_up=warm_up
                     )
         return task
     except Exception as e:
         raise e
 
 
-def load_task_by_definition(task_definition, on_queued=None, on_executing=None, on_finished=None):
+def load_task_by_definition(task_definition, on_queued=None, on_executing=None, on_finished=None, warm_up=None):
     task_id = task_definition["id"] if "id" in task_definition else \
         task_definition["name"] + "-" + str(int(time.time()))
     try:
@@ -251,21 +270,22 @@ def load_task_by_definition(task_definition, on_queued=None, on_executing=None, 
                     sub_tasks=task_definition["sub_tasks"],
                     on_queued=on_queued,
                     on_executing=on_executing,
-                    on_finished=on_finished
+                    on_finished=on_finished,
+                    warm_up=warm_up
                     )
         return task
     except Exception as e:
         raise e
 
 
-def load_all_task_by_names(task_file_names, on_queued=None, on_executing=None, on_finished=None):
+def load_all_task_by_names(task_file_names, on_queued=None, on_executing=None, on_finished=None, warm_up=None):
     if not task_file_names:
         return {}
     tasks = {}
     for task_file_name in task_file_names:
         try:
             task_path = TASKS_DIR + "." + task_file_name
-            task = load_task_from_file(task_path, on_queued, on_executing, on_finished)
+            task = load_task_from_file(task_path, on_queued, on_executing, on_finished, warm_up)
             tasks[task.id] = task
         except Exception as e:
             raise e

@@ -60,4 +60,5 @@ def get_argparser():
     parser.add_argument("-nc", "--no-cookies", action="store_true")
     parser.add_argument("-m", "--merge", nargs="?", type=str, const="")
     parser.add_argument("-s", "--silent", action="store_true")
+    parser.add_argument("-wp", "--warm-up", nargs="*", type=str)
     return parser

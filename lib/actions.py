@@ -157,11 +157,16 @@ signal.signal(signal.SIGALRM, task_action_time_out_handler)
 handlers = register_handlers()
 
 
-def execute(action_type, target, ready):
+def execute(action_type, target, ready, action):
+    warm_up_status = ""
+    if hasattr(action, "rate") and action.rate != 1:
+        warm_up_status = " (warm-up {:1.2f}x)".format(action.rate)
+
     current = time.time()
     if current < ready:
         delay = ready - current
-        env.log("sleep %1.2fs till action (%s, %s) is ready" % (delay, action_type, target), title="TASK ")
+        env.log("sleep %1.2fs%s till action (%s, %s) is ready" % (delay, warm_up_status, action_type, target),
+                title="TASK ")
         time.sleep(delay)
 
     env.log("now performing action (%s, %s)" % (action_type, target), title="TASK ")
