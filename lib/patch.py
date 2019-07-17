@@ -43,6 +43,7 @@ def apply():
     sys.modules['instapy.browser'].create_proxy_extension = create_proxy_extension
 
     sys.modules['instapy.file_manager'].get_workspace.__code__ = get_workspace.__code__
+    sys.modules['instapy.file_manager'].get_chromedriver_location.__code__ = get_chromedriver_location.__code__
 
 
 #
@@ -136,7 +137,7 @@ def end(self, threaded_session=False):
 #
 #
 def login(self):
-    InstaPy.super_print("login(): patched version")
+    # InstaPy.super_print("login(): patched version")
     InstaPy.env.event("LOGIN", "BEGIN")
     """Used to login the user either with the username and password"""
 
@@ -213,7 +214,7 @@ def login(self):
 
 
 def set_selenium_local_session_patch(self):
-    InstaPy.super_print("set_selenium_local_session_patch(): patched version")
+    # InstaPy.super_print("set_selenium_local_session_patch(): patched version")
     if self.browser:
         self.browser.quit()
         self.browser = None
@@ -544,7 +545,7 @@ def login_user(browser,
                # switch_language=True, # this argument cancelled since instapy-0.3.4
                bypass_suspicious_attempt=False,
                bypass_with_mobile=False):
-    super_print("login_user(): patched version")
+    # super_print("login_user(): patched version")
     """Logins the user with the given username and password"""
     #
     #
@@ -1167,7 +1168,7 @@ def login_user(browser,
 
 
 def bypass_suspicious_login(browser, bypass_with_mobile):
-    super_print("bypass_suspicious_login(): patched version")
+    # super_print("bypass_suspicious_login(): patched version")
     # sleep(10000)  # let me look at this page carefully
     """Bypass suspicious login attempt verification. This should be only
     enabled
@@ -1321,7 +1322,7 @@ def bypass_suspicious_login(browser, bypass_with_mobile):
 
 
 def dismiss_get_app_offer(browser, logger):
-    super_print("dismiss_get_app_offer(): patched version")
+    # super_print("dismiss_get_app_offer(): patched version")
     """ Dismiss 'Get the Instagram App' page after a fresh login """
     offer_elem = "//*[contains(text(), 'Get App')]"
     dismiss_elem = "//*[contains(text(), 'Not Now')]"
@@ -1340,7 +1341,7 @@ def dismiss_get_app_offer(browser, logger):
 
 
 def dismiss_notification_offer(browser, logger):
-    super_print("dismiss_notification_offer(): patched version")
+    # super_print("dismiss_notification_offer(): patched version")
     """ Dismiss 'Turn on Notifications' offer on session start """
     offer_elem_loc = "//div/h2[text()='Turn on Notifications']"
     dismiss_elem_loc = "//button[text()='Not Now']"
@@ -1382,7 +1383,7 @@ def dismiss_notification_offer(browser, logger):
 
 
 def check_authorization(browser, username, method, logger, notify=True):
-    super_print("check_authorization(): patched version")
+    # super_print("check_authorization(): patched version")
     """ Check if user is NOW logged in """
     if notify is True:
         logger.info("Checking if '{}' is logged in...".format(username))
@@ -1759,3 +1760,33 @@ def get_workspace():
     update_workspace(workspace)
     update_locations()
     return WORKSPACE
+
+
+def get_chromedriver_location():
+    """ Solve chromedriver access issues """
+    CD = Settings.chromedriver_location
+
+    if OS_ENV == "windows":
+        if not CD.endswith(".exe"):
+            CD += ".exe"
+
+    if not file_exists(CD):
+        workspace_path = slashen(WORKSPACE["path"], "native")
+        assets_path = "{}{}assets".format(workspace_path, native_slash)
+        validate_path(assets_path)
+
+        # only import from this package when necessary
+        from instapy_chromedriver import binary_path
+
+        CD = binary_path
+        chrome_version = pkg_resources.get_distribution("instapy_chromedriver").version
+        # message = "Using built in instapy-chromedriver executable (version {})".format(chrome_version)
+        # highlight_print(Settings.profile["name"],
+        #                 message,
+        #                 "workspace",
+        #                 "info",
+        #                 Settings.logger)
+
+    # save updated path into settings
+    Settings.chromedriver_location = CD
+    return CD
