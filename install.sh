@@ -80,3 +80,7 @@ fi
 if ! grep -q "DISPLAY" /etc/profile; then
     sed -i '$s/$/\nexport DISPLAY=:99/' /etc/profile
 fi
+
+# fix broken install, if any
+apt-get -y install -f
+# apt --fix-broken install
