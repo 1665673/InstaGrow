@@ -168,7 +168,7 @@ def login(self):
 
     if not logged_in:
         InstaPy.env.event("LOGIN", "FAIL")
-        print("---------------------------------------------------")
+        InstaPy.env.log("-------------------------------------------")
         # message = "Wrong login data!"
         # highlight_print(self.username,
         #                 message,
@@ -184,7 +184,7 @@ def login(self):
         #
         InstaPy.env.report_success(self)
         InstaPy.env.event("LOGIN", "SUCCESS")
-        print("---------------------------------------------------")
+        InstaPy.env.log("-------------------------------------------")
         # message = "Login success!"
         # highlight_print(self.username,
         #                 message,
