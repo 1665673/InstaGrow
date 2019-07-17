@@ -359,12 +359,12 @@ def _run_script(argv):
         env = os.environ.copy()
         env["DISPLAY"] = ":99"
         process = subprocess.Popen(
-            [' '.join(["python3"] + argv)],
-            # ["python3"] + argv,
+            # [' '.join(["python3"] + argv)],
+            ["python3"] + argv,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.PIPE,
-            shell=True,
+            # shell=True,
             env=env
         )
 
@@ -538,21 +538,21 @@ def _parse_script_arguments(argv):
 
 def _get_memory_usage(pid):
     rss = 0
-    try:
-        parent = psutil.Process(pid)
-        rss = parent.memory_info().rss
-        # try get memory usage of sub-processes
-        children = parent.children(recursive=True)
-        for child in children:
-            try:
-                if child.poll() is None:
-                    rss1 = child.memory_info().rss
-                    if rss1:
-                        rss += rss1
-            except:
-                pass
-    except Exception as e:
-        print("error in _get_memory_usage(): " + str(e))
+    # try:
+    #     parent = psutil.Process(pid)
+    #     rss = parent.memory_info().rss
+    #     # try get memory usage of sub-processes
+    #     children = parent.children(recursive=True)
+    #     for child in children:
+    #         try:
+    #             if child.poll() is None:
+    #                 rss1 = child.memory_info().rss
+    #                 if rss1:
+    #                     rss += rss1
+    #         except:
+    #             pass
+    # except Exception as e:
+    #     print("error in _get_memory_usage(): " + str(e))
     return rss
 
 
