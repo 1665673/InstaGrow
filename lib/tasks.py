@@ -68,6 +68,8 @@ class Action:
             #
             if self.ready < time.time():
                 self.ready = time.time()
+            cur_ready = self.ready
+
             #
             # a regular move to next action in the same sub_task
             if self.index_action < count_action:
@@ -116,10 +118,10 @@ class Action:
                 rate = self._task().warm_up["rate"]
                 if time.time() < end and begin < end:
                     # recalculate ready time
-                    ready = self.ready - time.time()
+                    wait = self.ready - cur_ready
                     rate = 1.0 + (end - time.time()) / (end - begin) * (rate - 1.0)
-                    ready *= rate
-                    self.ready = time.time() + ready
+                    wait *= rate
+                    self.ready = cur_ready + wait
                     self.rate = rate
                 else:
                     self.rate = 1.0

@@ -585,6 +585,9 @@ def login_user(browser,
                 # print(cookie["name"])
                 # if cookie["name"] == "urlgen":
                 #     continue
+                # print(cookie)
+                if "expiry" in cookie:
+                    cookie["expiry"] = int(float(cookie["expiry"]))
                 browser.add_cookie(cookie)
             cookie_loaded = True
         except Exception as e:

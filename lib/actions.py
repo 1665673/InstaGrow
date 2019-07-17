@@ -88,7 +88,7 @@ def like_by_tag(session, target):
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
     # fetch and cache amount = 50 links at a time
-    session.like_by_tags([target], amount=50, interact=False)
+    session.like_by_tags([target], amount=20, interact=False)
     return session.like_img_success
 
 
@@ -97,7 +97,7 @@ def like_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.like_by_locations([target], amount=50)
+    session.like_by_locations([target], amount=20)
     return session.like_img_success
 
 
@@ -106,7 +106,7 @@ def comment_by_location(session, target):
     if 7 <= utc.hour < 15:
         env.info("time is between 00:00 and 07:59 PST, skip this action")
         return
-    session.comment_by_locations([target], amount=50, skip_top_posts=True)
+    session.comment_by_locations([target], amount=20, skip_top_posts=True)
     return session.comment_img_success
 
 

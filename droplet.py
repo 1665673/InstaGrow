@@ -351,6 +351,8 @@ def _run_script(argv):
 
     # get instance, username and tasks from arguments
     script_args = _parse_script_arguments(argv[1:])  # don't include argv[0] == "run.py" while parsing
+    if not script_args:
+        raise Exception("invalid script arguments!")
     instance = script_args.instance
     username = script_args.username
     tasks = script_args.tasks
