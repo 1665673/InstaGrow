@@ -199,22 +199,23 @@ def like_by_locations_patch(self,
                                self.ignore_if_contains,
                                self.logger))
 
-                if not inappropriate and self.delimit_liking:
-                    self.liking_approved = verify_liking(self.browser,
-                                                         self.max_likes,
-                                                         self.min_likes,
-                                                         self.logger)
+                # if not inappropriate and self.delimit_liking:
+                #     self.liking_approved = verify_liking(self.browser,
+                #                                          self.max_likes,
+                #                                          self.min_likes,
+                #                                          self.logger)
 
-                if not inappropriate and self.liking_approved:
+                # if not inappropriate and self.liking_approved:
+                if True:
                     # validate user
-                    validation, details = self.validate_user_call(user_name)
-
-                    if validation is not True:
-                        self.logger.info("--> Not a valid user: {}".format(details))
-                        not_valid_users += 1
-                        continue
-                    else:
-                        web_address_navigator(self.browser, link)
+                    # validation, details = self.validate_user_call(user_name)
+                    #
+                    # if validation is not True:
+                    #     self.logger.info("--> Not a valid user: {}".format(details))
+                    #     not_valid_users += 1
+                    #     continue
+                    # else:
+                    #     web_address_navigator(self.browser, link)
 
                     #
                     #
@@ -477,13 +478,14 @@ def like_by_tags_patch(self,
                                self.logger)
                 )
 
-                if not inappropriate and self.delimit_liking:
-                    self.liking_approved = verify_liking(self.browser,
-                                                         self.max_likes,
-                                                         self.min_likes,
-                                                         self.logger)
+                # if not inappropriate and self.delimit_liking:
+                #     self.liking_approved = verify_liking(self.browser,
+                #                                          self.max_likes,
+                #                                          self.min_likes,
+                #                                          self.logger)
 
-                if not inappropriate and self.liking_approved:
+                # if not inappropriate and self.liking_approved:
+                if True:
                     # validate user
                     # validation, details = self.validate_user_call(
                     #    user_name)
