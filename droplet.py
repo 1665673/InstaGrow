@@ -258,8 +258,10 @@ def script_login(instance):
     if instance in _scripts:
         raise Exception("instance-already-exists")
     argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
-            "-i", instance, "-o", _id, "-m", instance]
-    ap = ["-ap"] + _args.allocate_proxy if _args.use_proxy == "True" else []
+            "-i", instance, "-o", _id, "-m", instance,
+            "-g", "-c", "-di"]
+    enable_proxy = _args.allocate_proxy and not (len(_args.allocate_proxy) > 0 and _args.allocate_proxy[0] == "off")
+    ap = ["-ap"] + _args.allocate_proxy if enable_proxy else []
     return _run_script(argv + ap)
 
 
@@ -712,8 +714,9 @@ def read_config_file(args):
         "address": [str, "droplet-address", DEFAULT_SERVER_ADDRESS],
         "port": [int, "droplet-port", DEFAULT_PORT_NUMBER],
         "report_interval": [int, "droplet-report-interval", DEFAULT_REPORT_INTERVAL],
-        "use_proxy": [str, "script-use-proxy", "True"],
-        "allocate_proxy": [list, "script-allocate-proxy", []],
+        # "use_proxy": [False, str, "script-use-proxy", "True"],
+        "gui": [bool, "script-enable-gui", False],
+        "allocate_proxy": [list, "script-allocate-proxy", ["off"]],
     }
     #
     #   process them!
@@ -725,6 +728,7 @@ def read_config_file(args):
         default_value = configurations[key][2]
 
         current_value = getattr(args, arg_name)
+
         if current_value is None:
             if config_name in config["DEFAULT"] and config["DEFAULT"][config_name]:
                 config_value = config["DEFAULT"][config_name]
@@ -732,9 +736,13 @@ def read_config_file(args):
                     config_value = config_value.split(' ')
                 elif arg_type == int:
                     config_value = int(config_value)
+                elif arg_type == bool:
+                    config_value = (config_value == "True")
                 current_value = config_value
-        if not current_value:
+
+        if current_value is None:
             current_value = default_value
+
         setattr(args, arg_name, current_value)
 
         current_value_to_save = ' '.join(current_value) if arg_type == list else str(current_value)
@@ -781,7 +789,7 @@ def main():
     parser.add_argument("-p", "--port", type=int)
     parser.add_argument("-n", "--name", type=str)
     parser.add_argument("-t", "--type", type=str)
-    parser.add_argument("-up", "--use-proxy", type=str)
+    # parser.add_argument("-up", "--use-proxy", type=str)
     parser.add_argument("-ap", "--allocate-proxy", nargs="*", type=str)
     parser.add_argument("-nr", "--no-restore", action="store_true")
     parser.add_argument("-ri", "--report-interval", type=int)
@@ -790,7 +798,9 @@ def main():
     #
     #   read config file, process 'type' and 'name' argument
     #
+    # print(args)
     read_config_file(args)
+    print(args)
     global _args
     _args = args
 

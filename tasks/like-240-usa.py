@@ -1,6 +1,6 @@
 name = "like-usa"
 title = "like by usa locations"
-loop = True
+loop = -1
 sub_tasks = [
     {
         "action": "like-by-location",

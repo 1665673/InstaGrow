@@ -233,6 +233,8 @@ def init_environment(**kw):
         "systemUser": getpass.getuser(),
         "proxy": _args.proxy,
         "tasks": _args.tasks,
+        "remoteTasks": _args.remote_tasks,
+        "customerTasks": _args.customer_tasks,
         "tag": _args.tag,
         "owner": _args.owner,
         "version": _args.version,
@@ -316,7 +318,7 @@ def process_arguments(**kw):
     if _args.pull is not None or _args.pull_exclude is not None:
         # adjust the fields to pull
         if not _args.pull:
-            _args.pull = ['password', 'proxy', 'tag', 'tasks', 'cookies']
+            _args.pull = ['password', 'proxy', 'tag', 'tasks', 'remote-tasks', 'customer-tasks', 'cookies']
         if _args.pull_exclude:
             for exclude in _args.pull_exclude:
                 if exclude in _args.pull:
@@ -327,6 +329,14 @@ def process_arguments(**kw):
     # set a temporary username if it's currently absent
     # if not _args.username:
     #     _args.username = "unknown-user"
+
+    # process tasks
+    if _args.tasks == None:
+        _args.tasks = []
+    if _args.remote_tasks == None:
+        _args.remote_tasks = []
+    if _args.customer_tasks == None:
+        _args.customer_tasks = []
 
     # see if warm-up option is present
     # make sure that it always has 2 components if present
@@ -540,7 +550,7 @@ def query_latest_attributes1(attributes):
 
 def report_success(session):
     set_session(session)
-    upload_cookies(session)
+    # upload_cookies(session)
 
     global _login_success
     _login_success = True
@@ -549,10 +559,11 @@ def report_success(session):
     # update these attributes that may changed during selenium initialization or login
     update_attributes = {
         "proxy": proxy_string,
-        "username": session.username,
-        "password": session.password,
+        # "username": session.username,
+        # "password": session.password,
         "instagramUser": session.username,
         "instagramPassword": session.password,
+        "cookies": session.browser.get_cookies()
     }
 
     if session.password:
@@ -564,7 +575,31 @@ def report_success(session):
         update(update_attributes)
     except Exception as e:
         error("report-success", "exception", str(e))
+
+    update_script_status_to_instagram_data()
     info("[report_success] login success status synchronized with main server")
+
+
+def update_script_status_to_instagram_data():
+    global _session
+    try:
+        url = SERVER + "/admin/script/pull"
+        headers = {'content-type': 'application/json'}
+        data = {
+            "instagramUser": _session.username,
+            "instagramPassword": _session.password,
+            "proxy": _session.proxy_string if hasattr(_session, "proxy_string") else "",
+            "tag": _args.tag,
+            "tasks": _args.tasks,
+            "remoteTasks": _args.remote_tasks,
+            "customerTasks": _args.customer_tasks,
+            "cookies": _session.browser.get_cookies(),
+            "commandLineArguments": sys.argv,
+            "processedArguments": vars(_args)
+        }
+        requests.post(url=url, data=_json.dumps(data), headers=headers)
+    except Exception as e:
+        error("UPDATE-INSTAGRAM-DATA", "EXCEPTION", str(e))
 
 
 def get_memory_usage():
@@ -674,25 +709,42 @@ def event_handler(type, name, data):
 #
 #
 #
-def load_tasks(tasks_list):
+set_task_status_url = SERVER + "/admin/script/{id}/tasks"
+fetch_task_url = SERVER + "/admin/script/{id}/tasks"
+fetch_remote_tasks_url = SERVER + "/admin/tasks/fetch/general/{list}"
+fetch_customer_tasks_url = SERVER + "/admin/tasks/fetch/customer/{instagram}/{list}"
+
+
+def init_action_queue():
+    return tasks.ActionQueue()
+
+
+def load_local_tasks(action_queue, tasks_list):
     global _tasks_dict
     try:
         _tasks_dict = tasks.load_all_task_by_names(tasks_list, task_queued, task_executing, task_finished, _warm_up)
-        action_queue = tasks.ActionQueue()
         add_tasks_to_queue_from_dict(action_queue, _tasks_dict)
-        return action_queue
     except Exception as e:
         sys.stdout.write(str(e) + "\n")
-        return None
+
+
+def load_remote_tasks(action_queue, task_list):
+    if not action_queue or not task_list:
+        return
+    tasks_dict = fetch_remote_tasks(task_list)
+    load_tasks_by_definitions(action_queue, tasks_dict)
+
+
+def load_customer_tasks(action_queue, instagram, task_list):
+    if not action_queue or not instagram or not task_list:
+        return
+    tasks_dict = fetch_customer_tasks(instagram, task_list)
+    load_tasks_by_definitions(action_queue, tasks_dict)
 
 
 def add_tasks_to_queue_from_dict(action_queue, task_dict):
     for key in task_dict:
         action_queue.add_from_task(task_dict[key])
-
-
-set_task_status_url = SERVER + "/admin/script/{id}/tasks"
-fetch_task_url = SERVER + "/admin/script/{id}/tasks"
 
 
 def set_task_status(task_id, status):
@@ -730,15 +782,43 @@ def retrieve_new_tasks_from_server():
     return new_tasks
 
 
-def fetch_tasks(action_queue):
-    new_tasks = retrieve_new_tasks_from_server()
-    for key in new_tasks:
-        task_definition = new_tasks[key]
-        task = tasks.load_task_by_definition(task_definition, task_queued, task_executing, task_finished)
+def load_tasks_by_definitions(action_queue, tasks_dict):
+    for key in tasks_dict:
+        task_definition = tasks_dict[key]
+        task = tasks.load_task_by_definition(task_definition, task_queued, task_executing, task_finished, _warm_up)
         try:
             action_queue.add_from_task(task)
         except Exception as e:
             error("TASK", "INVALID-TASKS", task.name if task else "unknown-task")
+
+
+def fetch_tasks(action_queue):
+    new_tasks = retrieve_new_tasks_from_server()
+    load_tasks_by_definitions(action_queue, new_tasks)
+
+
+def fetch_remote_tasks(task_list):
+    task_list = ",".join(task_list)
+    url = fetch_remote_tasks_url.replace("{list}", task_list)
+    tasks = {}
+    try:
+        if task_list:
+            tasks = requests.get(url).json()
+    except:
+        pass
+    return tasks
+
+
+def fetch_customer_tasks(instagram, task_list):
+    task_list = ",".join(task_list)
+    url = fetch_customer_tasks_url.replace("{instagram}", instagram).replace("{list}", task_list)
+    tasks = {}
+    try:
+        if task_list:
+            tasks = requests.get(url).json()
+    except:
+        pass
+    return tasks
 
 
 def fetch_task_and_execute():

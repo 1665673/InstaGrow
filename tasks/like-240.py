@@ -1,6 +1,6 @@
 name = "like"
 title = "like by tags"
-loop = True
+loop = -1
 sub_tasks = [
     {
         "action": "like-by-tag",

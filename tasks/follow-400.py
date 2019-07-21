@@ -1,6 +1,6 @@
 name = "follow"
 title = "follow then un-follow"
-loop = True
+loop = -1
 sub_tasks = [
     {
         "action": "follow-user",

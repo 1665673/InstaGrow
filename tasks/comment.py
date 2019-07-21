@@ -1,6 +1,6 @@
 name = "comment"
 title = "comment by locations"
-loop = True
+loop = -1
 sub_tasks = [
     {
         "init": "init-comment-by-location",

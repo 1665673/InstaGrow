@@ -34,7 +34,7 @@ A Task object represents the logic of a task.
 A task could be a mix of sub_tasks, an example of an actions is a follow-by-list.
 
 An Action object is an iterator to traverse all actions defined in a task,
-this iterator will likely to go across different sub_tasks in the same Task object,
+this iterator will go across different sub_tasks in the same Task object,
 while preserving it's relative ordering.
 """
 
@@ -85,11 +85,12 @@ class Action:
                     self.index_subtask += 1
                     self.ready += self._subtask()["delay-before-start"]
                 #
-                #   reached the task end, see if this task loops
+                #   reached the task end, see if this task loops any further
                 else:
+                    self._task().loop -= 1
                     #
                     #   yes, loop. go ahead
-                    if self._task().loop:
+                    if self._task().loop is not 0:
                         #
                         # task has more than 1 sub_tasks, start over from the very first one
                         if count_subtasks > 1:
@@ -106,7 +107,7 @@ class Action:
                             cooldown = self._subtask()["cool-down"]
                             self.ready += delay1 if delay1 > cooldown else cooldown
                     #
-                    # this task do not loop
+                    # this task do not loop any further
                     # so this iterator reaches the end
                     else:
                         pass
@@ -172,7 +173,7 @@ class Task:
                  on_finished=None, on_executing=None, on_queued=None, warm_up=None):
         self.id = id
         self.title = title
-        self.loop = loop
+        self.loop = int(loop)
         self.sub_tasks = sub_tasks
         self.on_finished = on_finished
         self.on_executing = on_executing
@@ -210,6 +211,10 @@ class Task:
             return Action(self, len(self.sub_tasks) - 1, len(self.sub_tasks[-1]["targets"]))
         except Exception:
             return self.begin()
+
+    # see if this task ended
+    def ended(self):
+        return self.loop is 0
 
     # this function will be called upon queued
     def queued(self):

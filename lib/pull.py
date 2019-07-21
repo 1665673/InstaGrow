@@ -12,19 +12,20 @@ load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 
 pull_url = SERVER + "/admin/credentials/pull"
+pull_url_v0 = SERVER + "/admin/script/pull/{instagram}"
 
 # is_module = False
 # if "instapy" in sys.modules:
 #    is_module = True
 
 
-all_fields = ["instagramPassword", "proxy", "tag", "tasks", "cookies"]
+all_fields = ["instagramPassword", "proxy", "tag", "tasks", "remoteTasks", "customerTasks", "cookies"]
 
 
 #
 #
 #
-def get_data(username, sources=[], env={}):
+def get_data_deprecated(username, sources=[], env={}):
     if username:  # and _version: version is optional
         headers = {'content-type': 'application/json'}
         req = {
@@ -41,15 +42,31 @@ def get_data(username, sources=[], env={}):
             return {}
 
 
+def get_data(username, sources=[], env={}):
+    if username:
+        try:
+            url = pull_url_v0.replace("{instagram}", username)
+            return requests.get(url).json()
+        except:
+            return {}
+    else:
+        return {}
+
+
 def get_details_string(data, fields, details=False):
     data = copy.copy(data)
-    tasks = ""
-    if "tasks" in data and data["tasks"] is not None:
-        tasks = "--tasks "
-        for t in data["tasks"]:
-            tasks += t + " "
-    data["tasks"] = tasks
+
+    task_sources = {"tasks": "-t", "remoteTasks": "-rt", "customerTasks": "-ct"}
+    for source, name in task_sources.items():
+        tasks = ""
+        if source in data and data[source] is not None:
+            tasks = name
+            for t in data[source]:
+                tasks += " " + t
+        data[source] = tasks
+
     data["cookies1"] = "[cookie-size: {} entries]".format(len(data["cookies"]) if "cookies" in data else 0)
+    data["proxy"] = data["proxy"] if "proxy" in data and data["proxy"] is not None else ""
     data["tag"] = '--tag "{}"'.format(data["tag"]) if "tag" in data and data["tag"] is not None else ""
 
     for field in all_fields:
@@ -61,9 +78,11 @@ def get_details_string(data, fields, details=False):
 
     # print("%s %s %s %s %s\n" % (data["instagramUser"], data["instagramPassword"],
     #                            data["proxy"] if "proxy" in data else "", data["tasks"], data["cookies"]))
-    return "{0} {1} {2} {3} {4} {5}\n" \
+    return "{0} {1} {2} {3} {4} {5} {6} {7}\n" \
         .format(data["instagramUser"], data["instagramPassword"],
-                data["proxy"] if "proxy" in data else "", data["tag"], data["tasks"], data["cookies1"])
+                data["proxy"], data["tag"],
+                data["tasks"], data["remoteTasks"], data["customerTasks"],
+                data["cookies1"])
 
 
 def restore_cookies(username, cookies):
@@ -92,12 +111,18 @@ def userdata(username, fields, sources=[], env={}):
     if "password" in fields:
         fields.append("instagramPassword")
 
+    if "remote-tasks" in fields:
+        fields.append("remoteTasks")
+
+    if "customer-tasks" in fields:
+        fields.append("customerTasks")
+
     if "lib.environments" in sys.modules:
         # username = sys.modules["lib.environments"]._args.username
         # if "version" in sys.modules["lib.environments"]._reporter_fields:
         #    version = sys.modules["lib.environments"]._reporter_fields["version"]
         data = get_data(username, sources, env)
-        source = str(sources) if sources is not None and len(sources) > 0 else "latest-records"
+        source = str(sources) if sources is not None and len(sources) > 0 else "latest-record"
         env = sys.modules["lib.environments"]
         _args = env.args()
         if "instagramUser" in data:
@@ -114,6 +139,10 @@ def userdata(username, fields, sources=[], env={}):
                 _args.tag = data["tag"]
             if "tasks" in fields and _args.tasks is None and "tasks" in data:
                 _args.tasks = data["tasks"]
+            if "remoteTasks" in fields and _args.remote_tasks is None and "remoteTasks" in data:
+                _args.remote_tasks = data["remoteTasks"]
+            if "customerTasks" in fields and _args.customer_tasks is None and "customerTasks" in data:
+                _args.customer_tasks = data["customerTasks"]
             if "cookies" in fields and "cookies" in data:
                 # _args.cookie = data["cookie"]
                 restore_cookies(username, data["cookies"])
@@ -128,12 +157,15 @@ def main():
     parser.add_argument("-v", "--version", nargs='?', type=str)
     parser.add_argument("-t", "--tasks", nargs='?', type=str)
     parser.add_argument("-d", "--details", action="store_true")
+    parser.add_argument("-r", "--record", action="store_true")
     args = parser.parse_args()
     username = args.username
     sources = ["version", "tasks"]
 
     data = get_data(username, sources, args.__dict__)
-    if "instagramUser" in data:
+    if args.record:
+        print(data)
+    elif "instagramUser" in data:
         print(get_details_string(data, all_fields, args.details))
     else:
         print("no credentials available from server")

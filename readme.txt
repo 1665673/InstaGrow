@@ -16,14 +16,14 @@ python3 droplet.py [-n 服务器名称] [-t 服务器类型]
 -t，服务器类型用来标记服务器用途。只可取两个值，login或regular。如果不指定这个参数，默认为regular。
 socialgrow主服务器自动管理脚本时，login任务会选择跑在login类型的服务器上；其他常规脚本会选择跑在regular类型。
 其他参数：
-    -a，监听address。默认0.0.0.0，即监听一切网卡
-    -p，监听端口。默认8000
-    -ri，设置向主服务器汇报状态的间隔时间。默认30秒
-    -up，开启脚本时是否使用代理，默认为True，即使用。该设置会影响login脚本，或者通过预设参数运行的run脚本
-    -ap，专门针对login脚本。它指明开启login脚本时如何分配代理。不指明则不使用代理。可接两个附加参数group和tag
-    -nr，首次启动服务时不恢复之前的脚本
-    -w，使用worker进程的方式开启服务。默认daemon方式
-    -g，使用gui模式开启脚本，用于调试。默认关闭
+    -a  监听address。默认0.0.0.0，即监听一切网络源
+    -p  监听端口。默认8000
+    -ri 设置向主服务器汇报状态的间隔时间。默认30秒
+    -ap 专门针对login脚本。它指明开启login脚本时如何分配代理。不指明则不使用代理。可接两个附加参数group和tag
+        如果曾经使用过该参数，那么无论下次启动droplet.py是否指定它，都会延续上一次的设置。若想取消，需显式指定-ap off
+    -nr 首次启动服务时不恢复之前的脚本
+    -w  使用worker进程的方式开启服务。默认daemon方式
+    -g  自动使用gui模式开启脚本，用于调试。默认关闭
 
 
 
@@ -64,8 +64,9 @@ ap只在参数中缺少代理时发生作用，如果命令行已经给出代理
 -p, --pull [field1] [field2] ...
 ------------------------------------------------------------------------
 脚本根据IG用户名，自动从后台获取最近登录成功过的密码，代理，tag，cookies，tasks（仅run.py支持）。
-pull后面可以加若干个field参数，表示具体需要pull哪些信息。其值可能为password，proxy，cookies，tasks。
-如果不指明具体想pull的信息，则默认为四个参数全部获取。
+pull后面可以加若干个field参数，表示具体需要pull哪些信息。
+信息字段的取值可能为password，proxy，tag，cookies，tasks，remote-tasks，customer-tasks。
+如果不指明具体想pull的信息，则默认为七个参数全部获取。
 如果本地已有当前IG用户的cookies，pull不会覆盖已有的cookies。
 【举例1】python3 like.py minhaodeng -p
 pull最近登录成功的密码、代理、cookies
@@ -103,6 +104,23 @@ pull最近登录成功的、使用在相同version的run.py脚本里的密码，
 同一个文件中的任务，依次执行，可指定子任务的冷却时间；不同文件中的任务，相互排队。
 【举例】python3 run.py minhaodeng -p -t follow like-asia
 脚本将pull最近登录参数，并且混合执行tasks/follow.py和tasks/like-asia.py中定义的任务。
+
+
+
+-rt, --remote-tasks task1 [task2] ...
+------------------------------------------------------------------------
+指定要跑的远程tasks。仅run.py支持。用法和本地task一样，唯一区别是这些task是从服务器获取
+run.py脚本只需要有至少一处task来源即可。如果指定了-rt参数，则不再必须指定-t参数。
+由于remote-task和本地task不在同一个命名空间，所以它们的任务名可以重复。
+
+
+
+-ct, --customer-tasks task1 [task2] ...
+------------------------------------------------------------------------
+指定要跑的定制tasks。仅run.py支持。用法和本地task一样，唯一区别是这些task是从服务器获取
+它和remote-task的区别是，customer-task是针对特定的instagram帐号定制。
+所以使用-ct参数时，脚本在启动时必须有明确的instagram-username。
+由于customer-task和本地task不在同一个命名空间，所以它们的任务名可以重复。
 
 
 
@@ -202,9 +220,9 @@ pull最近登录成功的、使用在相同version的run.py脚本里的密码，
 
 
 
--user, --username
--pass, --password
--proxy, --proxy
+-user, --username1
+-pass, --password1
+-px, --proxy1
 ------------------------------------------------------------------------
 为用户名，密码，代理额外提供三个可用于任意位置的便捷参数。
 如果这三个参数和命令行前三个位置的用户名，密码，代理同时出现，以这三个为准。
@@ -214,8 +232,9 @@ pull最近登录成功的、使用在相同version的run.py脚本里的密码，
 -v, --version [string]
 -n, --name [string]
 -i, --instance [string]
+-o, --owner [string]
 ------------------------------------------------------------------------
 用于标记脚本。在命令行处指定的这些参数，会覆盖文件中env.config()里的声明。
-三者都可以被--pull识别用以分组。
+这些信息均可被--pull-by识别用以分组。
 
 

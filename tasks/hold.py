@@ -1,6 +1,6 @@
 name = "hold"
 title = "hold on for future tasks"
-loop = True
+loop = -1
 sub_tasks = [
     {
         "action": "hold-on",

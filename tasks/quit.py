@@ -1,6 +1,6 @@
 name = "quit"
 title = "quit the script"
-loop = False
+loop = 1
 sub_tasks = [
     {
         "action": "quit",
