@@ -67,6 +67,7 @@ _pulled_cookies = None
 _cookies_loaded = False
 _action_statistics = {}
 _warm_up = None
+_tasks_loaded = []
 # declaim a global logger
 logger = logging.getLogger()
 
@@ -715,6 +716,10 @@ fetch_remote_tasks_url = SERVER + "/admin/tasks/fetch/general/{list}"
 fetch_customer_tasks_url = SERVER + "/admin/tasks/fetch/customer/{instagram}/{list}"
 
 
+def get_loaded_task_names():
+    return _tasks_loaded
+
+
 def init_action_queue():
     return tasks.ActionQueue()
 
@@ -726,6 +731,8 @@ def load_local_tasks(action_queue, tasks_list):
         add_tasks_to_queue_from_dict(action_queue, _tasks_dict)
     except Exception as e:
         sys.stdout.write(str(e) + "\n")
+    global _tasks_loaded
+    _tasks_loaded += tasks_list
 
 
 def load_remote_tasks(action_queue, task_list):
@@ -733,6 +740,9 @@ def load_remote_tasks(action_queue, task_list):
         return
     tasks_dict = fetch_remote_tasks(task_list)
     load_tasks_by_definitions(action_queue, tasks_dict)
+    global _tasks_loaded
+    for key in tasks_dict:
+        _tasks_loaded.append(key)
 
 
 def load_customer_tasks(action_queue, instagram, task_list):
@@ -740,6 +750,9 @@ def load_customer_tasks(action_queue, instagram, task_list):
         return
     tasks_dict = fetch_customer_tasks(instagram, task_list)
     load_tasks_by_definitions(action_queue, tasks_dict)
+    global _tasks_loaded
+    for key in tasks_dict:
+        _tasks_loaded.append(key)
 
 
 def add_tasks_to_queue_from_dict(action_queue, task_dict):

@@ -18,7 +18,7 @@ if not action_queue or action_queue.empty():
     env.info("no valid tasks available. script quiting...")
     exit(0)
 else:
-    env.info("tasks loaded: " + str(env.args().tasks + env.args().remote_tasks + env.args().customer_tasks))
+    env.info("tasks loaded: " + str(env.get_loaded_task_names()))
 
 session = InstaPy(**env.arguments())
 
