@@ -832,10 +832,12 @@ def login_user(browser,
             #
             indicator_selector = "//div[@class='eiCW-']|//img[@class='_6q-tv']|//button[text()='Send Security Code']"
             twoway_page_selector = "//input[@name='verificationCode']"
+            twoway_page_selector_v2 = "//input[@name='security_code']"
             suspicious_page_selector = "//button[text()='Close']|//button[text()='This Was Me']"
             block_selector = "//input[@name='fullName']"
-            indicator_selector = indicator_selector + "|" + twoway_page_selector + \
-                                 "|" + suspicious_page_selector + "|" + block_selector
+            indicator_selector = indicator_selector + "|" + \
+                                 twoway_page_selector + "|" + twoway_page_selector_v2 + "|" + \
+                                 suspicious_page_selector + "|" + block_selector
 
             try:
                 # if page_after_login is not "", then it's not the first attemp, let wait a bit
@@ -878,6 +880,11 @@ def login_user(browser,
                     super_print("[login_user] it means two-way authentication page, need to enter security code")
                     current_page = "TWO-WAY-AUTHENTICATION"
                     break
+                elif indicator_ele.get_attribute("name") == "security_code":
+                    super_print(
+                        "[login_user] it means two-way authentication page (version-2), need to enter security code")
+                    current_page = "TWO-WAY-AUTHENTICATION-V2"
+                    break
                 elif indicator_ele.get_attribute("name") == "fullName":
                     super_print("[login_user] it means we may be blocked. login failed. ({} login retries left)"
                                 .format(retry_login))
@@ -912,7 +919,9 @@ def login_user(browser,
     #
     if current_page == "HOME":
         pass
-    elif current_page == "AUTHENTICATION" or current_page == "TWO-WAY-AUTHENTICATION":
+    elif current_page == "AUTHENTICATION" \
+            or current_page == "TWO-WAY-AUTHENTICATION" \
+            or current_page == "TWO-WAY-AUTHENTICATION-V2":
         #
         #
         #   the most complicated part
@@ -999,13 +1008,21 @@ def login_user(browser,
         #
         #   two-way-authentication
         #
-        else:
+        elif current_page == "TWO-WAY-AUTHENTICATION":
             input_code = explicit_wait(browser, "VOEL", ["//input[@name='verificationCode']", "XPath"],
                                        logger, 15, True)
             button_submit = browser.find_element_by_xpath("//button[text()='Confirm']")
             newcode_link = browser.find_element_by_xpath("//button[text()='resend it']")
             choice_text = browser.find_element_by_xpath("//div[@id='verificationCodeDescription']").text
             fail_selector = "//p[@id='twoFactorErrorAlert']"
+
+        elif current_page == "TWO-WAY-AUTHENTICATION-V2":
+            input_code = explicit_wait(browser, "VOEL", ["//input[@name='security_code']", "XPath"],
+                                       logger, 15, True)
+            button_submit = browser.find_element_by_xpath("//button[text()='Submit']")
+            newcode_link = browser.find_element_by_xpath("//a[text()='Get a new one']")
+            choice_text = browser.find_element_by_xpath("//p[contains(@class,'SVI5E')]").text
+            fail_selector = "//p[text()='Please check the code we sent you and try again.']"
 
         # read and send security code
         security_code = None
