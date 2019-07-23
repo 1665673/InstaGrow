@@ -107,6 +107,9 @@ def checkin():
     #
     # see if we do regular checkin, or merge with last record
     #
+    if _args.disable_reporter:
+        print("[reporter disabled]")
+        return
     if _args.merge is None:
         _reporter.checkin(CHECKIN_URL, _reporter_fields)
     else:
