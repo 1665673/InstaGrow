@@ -33,7 +33,7 @@ print("cookies from this session:")
 print(cookies)
 print()
 
-print("ready to upload cookies:")
+print("provide instagram account info for '--pull' purpose:")
 username = ""
 while not username:
     username = input("instagram username:")
