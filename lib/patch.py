@@ -214,6 +214,9 @@ def login(self):
 
 
 def set_selenium_local_session_patch(self):
+    # put InstaPy object in environment
+    InstaPy.env.set_session(self)
+
     # InstaPy.super_print("set_selenium_local_session_patch(): patched version")
     if self.browser:
         self.browser.quit()

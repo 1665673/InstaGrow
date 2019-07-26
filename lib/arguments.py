@@ -39,7 +39,7 @@ def get_argparser():
     parser.add_argument("-w", "--worker", action="store_true")
     parser.add_argument("-user", "--username1", type=str)
     parser.add_argument("-pass", "--password1", type=str)
-    parser.add_argument("-px", "--proxy1", type=str)
+    parser.add_argument("-x", "--proxy1", type=str)
     parser.add_argument("-di", "--disable-image", action="store_true")
     parser.add_argument("-c", "--chrome", action="store_true")
     parser.add_argument("-g", "--gui", action="store_true")

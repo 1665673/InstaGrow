@@ -10,6 +10,7 @@ from instapy.util import web_address_navigator
 import os
 import psutil
 import signal
+import re
 # import pickle
 import subprocess
 from dotenv import load_dotenv, find_dotenv
@@ -297,7 +298,7 @@ def process_arguments(**kw):
     # process argument allocate-proxy
     if _args.allocate_proxy is not None:
         # add two default values to make sure it has 2 sub arguments
-        _args.allocate_proxy += ["default", "default"]
+        _args.allocate_proxy += ["all", "all"]
 
         # preprocess some arguments of equivalents
     if _args.username1:
@@ -553,7 +554,7 @@ def query_latest_attributes1(attributes):
 
 
 def report_success(session):
-    set_session(session)
+    # set_session(session) # moved to InstaPy.set_selenium_local_session_patch
     # upload_cookies(session)
 
     global _login_success
@@ -928,12 +929,22 @@ def load_local_cookies(username):
     return {}
 
 
+def fetch_connection_ip(browser):
+    try:
+        # web_address_navigator(browser, ip_address_check_url)
+        # return browser.find_element_by_tag_name("pre").text
+        proxy_str = _session.proxy_string
+        ip = re.search(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", proxy_str).group(0)
+        return ip
+    except:
+        raise
+
+
 def test_connection(browser):
     try:
-        fetch_ip = None
+        fetch_ip = fetch_connection_ip(browser)
         fetch_instagram_data = None
-        web_address_navigator(browser, ip_address_check_url)
-        fetch_ip = browser.find_element_by_tag_name("pre").text
+
         if fetch_ip:
             web_address_navigator(browser, instagram_test_url)
             fetch_instagram_data = browser.page_source
