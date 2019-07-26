@@ -22,6 +22,7 @@ def apply():
     sys.modules['instapy.unfollow_util'].get_following_status.__code__ = get_following_status_patch.__code__
     sys.modules['instapy.unfollow_util'].verify_action.__code__ = verify_action_patch.__code__
     sys.modules['instapy.unfollow_util'].confirm_unfollow.__code__ = confirm_unfollow_patch.__code__
+    sys.modules['instapy.unfollow_util'].env = env
 
 
 #
@@ -1509,6 +1510,7 @@ def verify_action_patch(browser, action, track, username, person, person_id, log
                 explicit_wait(browser, "PFL", [], logger, 5)
 
             # find out CURRENT follow status (this is safe as the follow button is before others)
+
             following_status, follow_button = get_following_status(browser,
                                                                    track,
                                                                    username,
@@ -1516,6 +1518,7 @@ def verify_action_patch(browser, action, track, username, person, person_id, log
                                                                    person_id,
                                                                    logger,
                                                                    logfolder)
+
             if following_status in post_action_text_correct:
                 verified = True
             elif following_status in post_action_text_fail:
@@ -1536,6 +1539,20 @@ def verify_action_patch(browser, action, track, username, person, person_id, log
             #   perform it or try it one more time
             #
             click_visibly(browser, follow_button)
+
+            # find if blocked
+            if action == "follow":
+                failed_selector = "//h3[text()='Action Blocked']"
+                normal_selector = "//button[text()='Following']|//button[text()='Requested']"
+                indicator_ele = browser.find_element_by_xpath(failed_selector + "|" + normal_selector)
+                if indicator_ele.text == "Action Blocked":
+                    # print("blocked")
+                    env.error("FOLLOW-USER", "EXCEPTION", "Action Blocked")
+                    env.exit_gracefully_worker("quit reason: action blocked", None)
+                else:
+                    # print("not blocked")
+                    pass
+
             if action == "unfollow":
                 confirm_unfollow(browser, logger)
 

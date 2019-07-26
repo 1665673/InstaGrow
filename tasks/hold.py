@@ -4,6 +4,6 @@ loop = -1
 sub_tasks = [
     {
         "action": "hold-on",
-        "targets": [5]  # sleep 5 seconds
+        "targets": [30]  # sleep 5 seconds
     }
 ]
