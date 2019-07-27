@@ -40,6 +40,7 @@ load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
 CHECKIN_URL = SERVER + "/admin/check-in"
 CHECKOUT_URL = SERVER + "/admin/check-out/{}"
+REPORT_BLOCK_URL = SERVER + "/admin/report-instagram-block"
 GET_UPDATE_WARM_UP_URL = SERVER + "/admin/get-update-warm-up/{0}/{1}/{2}"
 DEFAULT_FOLLOWER_TRACKING_GAP = 1800
 QUERY_LATEST_TIMEOUT = 900
@@ -316,6 +317,14 @@ def process_arguments(**kw):
     for key in kw:
         if not hasattr(_args, key) or getattr(_args, key) is None:
             setattr(_args, key, kw[key])
+
+    # process short-cut for combo arguments
+    if _args.pull_cookies:
+        _args.pull = ["cookies"]
+    if _args.gui_chrome_disable_image:
+        _args.gui = True
+        _args.chrome = True
+        _args.disable_image = True
 
     # see if arguments says to pull user credentials from server,
     # do it right now
@@ -931,13 +940,13 @@ def load_local_cookies(username):
 
 def fetch_connection_ip(browser):
     try:
-        # web_address_navigator(browser, ip_address_check_url)
-        # return browser.find_element_by_tag_name("pre").text
+        # trust proxy string if a proxy is provided
         proxy_str = _session.proxy_string
-        ip = re.search(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", proxy_str).group(0)
-        return ip
+        return re.search(r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}", proxy_str).group(0)
     except:
-        raise
+        # fetch current ip from third-party website
+        web_address_navigator(browser, ip_address_check_url)
+        return browser.find_element_by_tag_name("pre").text
 
 
 def test_connection(browser):
@@ -1137,6 +1146,20 @@ def get_warm_up_timestamp(username, warm_up):
         return requests.get(url).json()
     except:
         return None
+
+
+def report_block(action, block_info={}):
+    username = _session.username
+    url = REPORT_BLOCK_URL
+    request_data = {
+        "instagram": username,
+        "action": action,
+        "data": block_info
+    }
+    try:
+        requests.post(url=url, headers={'content-type': 'application/json'}, data=_json.dumps(request_data))
+    except Exception as e:
+        error("REPORT-BLOCK", "EXCEPTION", str(e))
 
 
 #

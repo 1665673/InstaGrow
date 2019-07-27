@@ -1548,6 +1548,7 @@ def verify_action_patch(browser, action, track, username, person, person_id, log
                 if indicator_ele.text == "Action Blocked":
                     # print("blocked")
                     env.error("FOLLOW-USER", "EXCEPTION", "Action Blocked")
+                    env.report_block("follow", {"target": person})
                     env.exit_gracefully_worker("quit reason: action blocked", None)
                 else:
                     # print("not blocked")

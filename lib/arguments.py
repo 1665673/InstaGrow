@@ -64,4 +64,7 @@ def get_argparser():
     parser.add_argument("-s", "--silent", action="store_true")
     parser.add_argument("-dr", "--disable-reporter", action="store_true")
     parser.add_argument("-wp", "--warm-up", nargs="*", type=str)
+    # short-cut for combo arguments
+    parser.add_argument("-pc", "--pull-cookies", action="store_true")
+    parser.add_argument("-gcdi", "--gui-chrome-disable-image", action="store_true")
     return parser
