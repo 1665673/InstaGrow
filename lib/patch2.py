@@ -1547,7 +1547,7 @@ def verify_action_patch(browser, action, track, username, person, person_id, log
                 indicator_ele = browser.find_element_by_xpath(failed_selector + "|" + normal_selector)
                 if indicator_ele.text == "Action Blocked":
                     # print("blocked")
-                    env.error("FOLLOW-USER", "EXCEPTION", "Action Blocked")
+                    env.error("follow-user", "exception", "Action Blocked")
                     env.report_block("follow", {"target": person})
                     env.exit_gracefully_worker("quit reason: action blocked", None)
                 else:
