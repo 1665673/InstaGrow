@@ -1154,7 +1154,7 @@ def report_block(action, block_info={}):
     request_data = {
         "instagram": username,
         "action": action,
-        "data": block_info
+        "information": block_info
     }
     try:
         requests.post(url=url, headers={'content-type': 'application/json'}, data=_json.dumps(request_data))

@@ -800,9 +800,9 @@ def main():
     #
     # print(args)
     read_config_file(args)
-    print(args)
     global _args
     _args = args
+    # print(args)
 
     #
     #   see if this process is daemon or worker
