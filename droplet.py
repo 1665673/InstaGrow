@@ -518,8 +518,8 @@ def _stop_script_by_instance(instance):
 
 
 def _restore_scripts(scripts):
-    try:
-        for script in scripts:
+    for script in scripts:
+        try:
             if script["instance"] not in _scripts:
                 argv = script["arguments"]
                 #
@@ -532,8 +532,9 @@ def _restore_scripts(scripts):
                     "-rl": ["1"]
                 }, False)
                 _run_script(argv)
-    except Exception as e:
-        raise e
+        except Exception as e:
+            print(e)
+            continue
 
 
 def _parse_script_arguments(argv):
