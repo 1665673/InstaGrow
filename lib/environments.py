@@ -54,6 +54,7 @@ QUERY_LATEST_TIMEOUT = 900
 # }
 
 # global variables
+_start_time = time.time()
 _stream_for_stdout = None
 _stream_for_stderr = None
 _reporter = None
@@ -1154,12 +1155,21 @@ def report_block(action, block_info={}):
     request_data = {
         "instagram": username,
         "action": action,
-        "information": block_info
+        "information": block_info,
+        "environment": summary_environment()
     }
     try:
         requests.post(url=url, headers={'content-type': 'application/json'}, data=_json.dumps(request_data))
     except Exception as e:
         error("REPORT-BLOCK", "EXCEPTION", str(e))
+
+
+def summary_environment():
+    return {
+        "scriptId": _reporter.id,
+        "proxy": _session.proxy_string if hasattr(_session, "proxy_string") else "",
+        "runtime": time.time() - _start_time
+    }
 
 
 #
