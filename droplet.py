@@ -152,7 +152,10 @@ class Server(BaseHTTPRequestHandler):
                         .format(script["start-time"], int(time.time()))
                 #
                 elif action == "restart" and instance:
-                    script = script_restart(instance)
+                    if not arguments:
+                        script = script_restart(instance)
+                    else:
+                        script = script_restart_with_arguments(instance, arguments.split('+'))
                     message = "script restarted. start time: {}".format(script["start-time"])
                 #
                 elif action == "stop-all":
@@ -307,6 +310,12 @@ def script_restart(instance):
     # return run_script(argv, instance)
 
 
+def script_restart_with_arguments(instance, arguments):
+    printt("[restart-script] instance:", instance)
+    script_stop(instance)
+    return script_start(instance, arguments)
+
+
 def script_stop_all():
     scripts = _summary_all_scripts()
     _stop_scripts(scripts)
@@ -355,6 +364,7 @@ def _run_script(argv):
     script_args = _parse_script_arguments(argv[1:])  # don't include argv[0] == "run.py" while parsing
     if not script_args:
         raise Exception("invalid script arguments!")
+
     instance = script_args.instance
     username = script_args.username
     tasks = script_args.tasks
