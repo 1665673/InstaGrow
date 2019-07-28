@@ -537,7 +537,10 @@ def _restore_scripts(scripts):
 
 
 def _parse_script_arguments(argv):
-    return get_argparser().parse_args(argv)
+    try:
+        return get_argparser().parse_args(argv)
+    except:
+        return None
 
 
 def _get_memory_usage(pid):
