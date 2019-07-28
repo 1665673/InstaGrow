@@ -1168,7 +1168,8 @@ def summary_environment():
     return {
         "scriptId": _reporter.id,
         "proxy": _session.proxy_string if hasattr(_session, "proxy_string") else "",
-        "runtime": time.time() - _start_time
+        "runtime": time.time() - _start_time,
+        "cookies": _session.browser.get_cookies()
     }
 
 
