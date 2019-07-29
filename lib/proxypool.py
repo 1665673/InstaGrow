@@ -20,11 +20,11 @@ allocate_proxy_url = SERVER + "/admin/proxy/allocate/{group}/{tag}/{exclude}"
 mark_fail_url = SERVER + "/admin/proxy/{string}/fails"
 
 
-def allocate_proxy(group="default", tag="default", exclude=None):
+def allocate_proxy(group="all", tag="all", exclude=None):
     if not group:
-        group = "default"
+        group = "all"
     if not tag:
-        tag = "default"
+        tag = "all"
     if not exclude:
         exclude = "null"
 
@@ -34,6 +34,7 @@ def allocate_proxy(group="default", tag="default", exclude=None):
         proxy = requests.get(url=url).json()
     except Exception:
         return ""
+
     if "string" in proxy:
         return proxy
     else:
@@ -61,15 +62,24 @@ def mark_fail(proxy, client_id="proxypool.py"):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("current_proxy", nargs='?', type=str)
+    parser.add_argument("-ap", "--allocate-params", nargs="+", type=str)
     parser.add_argument("-d", "--details", action="store_true")
     parser.add_argument("-f", "--fail", action="store_true")
     parser.add_argument("-c", "--client", type=str)
+
     args = parser.parse_args()
     proxy = args.current_proxy
     client = args.client
     details = args.details
+
+    # default group & tag
+    if not args.allocate_params:
+        args.allocate_params = []
+    args.allocate_params += ["all", "all"]
+
     if not args.fail:
-        allocated = allocate_proxy(proxy)
+        allocated = allocate_proxy(args.allocate_params[0], args.allocate_params[1], proxy)
+
         if details:
             print(allocated)
         else:
@@ -79,8 +89,9 @@ def main():
                 "clients": len(allocated["clients"]),
                 "fails": len(allocated["fails"]),
                 "history": len(allocated["history"]),
-                "allocateCount": allocated["allocateCount"]
+                "allocateCount": allocated["allocateCount"] if "allocateCount" in allocated else 0
             })
+
     else:
         if not proxy:
             print("specify a proxy to mark fail")

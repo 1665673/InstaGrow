@@ -681,6 +681,7 @@ def event_handler(type, name, data):
             url = proxy_add_client_url.replace("{string}", data["proxy"])
             postdata = {
                 "id": _reporter.id,
+                # "instagramUser": _session.username,
                 "arguments": sys.argv,
                 "time": int(time.time())
             }
@@ -704,7 +705,7 @@ def event_handler(type, name, data):
                 pass
 
 
-    elif type == "SESSION" and name == "QUITTING":
+    elif type == "SELENIUM" and name == "SESSION-QUITTING":
         # report release of proxy, if applicable
         if data["proxy"]:
             url = proxy_delete_client_url.replace("{string}", data["proxy"]).replace("{client_id}", _reporter.id)
