@@ -20,7 +20,7 @@ from lib.arguments import get_argparser, amend_arguments
 
 load_dotenv(find_dotenv())
 
-VERSION = "1.06"
+VERSION = "1.07"
 DEFAULT_SERVER_ADDRESS = "0.0.0.0"
 DEFAULT_SERVER_NAME = "droplet" + "-" + str(int(time.time()))
 DEFAULT_SERVER_TYPE = "regular"
