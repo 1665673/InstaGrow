@@ -186,9 +186,12 @@ class Server(BaseHTTPRequestHandler):
         except Exception as e:
             message = str(e)
 
-        result["message"] = message
-        result["data"] = data
-        buffer = json.dumps(result)
+        try:
+            result["message"] = message
+            result["data"] = data
+            buffer = json.dumps(result)
+        except:
+            buffer = "unknown error occured"
 
         return bytes(buffer, "UTF-8")
 
