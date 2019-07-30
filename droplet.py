@@ -261,7 +261,6 @@ def script_login(instance):
     if instance in _scripts:
         raise Exception("instance-already-exists")
     argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
-            "-i", instance, "-o", _id, "-m", instance,
             "-g", "-c", "-di"]
     enable_proxy = _args.allocate_proxy and not (len(_args.allocate_proxy) > 0 and _args.allocate_proxy[0] == "off")
     ap = ["-ap"] + _args.allocate_proxy if enable_proxy else []
@@ -282,14 +281,6 @@ def script_start(instance, arguments):
         arguments += ["-rp", "5"]
     if "-s" not in arguments and "--silent" not in arguments:
         arguments += ["-s"]
-    if "-i" not in arguments and "--instance" not in arguments:
-        arguments += ["-i", instance]
-    if "-m" not in arguments and "--merge" not in arguments:
-        arguments += ["-m", instance]
-    if "-o" not in arguments and "--owner" not in arguments:
-        arguments += ["-o", _id]
-    # if "-g" not in arguments and "--gui" not in arguments:
-    #     arguments += ["-g"]
     return _run_script(arguments)
 
 
@@ -353,14 +344,6 @@ def _run_script(argv):
     # else:
     #     python = sys.executable
     #     os.execl(python, python, *argv)
-    if _args.gui:
-        if "-g" not in argv and "--gui" not in argv:
-            argv += ["-g"]
-    # if _args.allocate_proxy:
-    #     if "-ap" not in argv and "--allocate-proxy" not in argv:
-    #         argv += ["-ap"] + _args.allocate_proxy
-
-    printt("[run-script]", "about to run this script:\n", str(["python3"] + argv))
 
     # get instance, username and tasks from arguments
     script_args = _parse_script_arguments(argv[1:])  # don't include argv[0] == "run.py" while parsing
@@ -370,6 +353,22 @@ def _run_script(argv):
     instance = script_args.instance
     username = script_args.username
     tasks = script_args.tasks
+
+    # adjust arguments
+    if _args.gui:
+        if "-g" not in argv and "--gui" not in argv:
+            argv += ["-g"]
+    # if _args.allocate_proxy:
+    #     if "-ap" not in argv and "--allocate-proxy" not in argv:
+    #         argv += ["-ap"] + _args.allocate_proxy
+    if "-i" not in argv and "--instance" not in argv:
+        argv += ["-i", instance]
+    if "-m" not in argv and "--merge" not in argv:
+        argv += ["-m", instance]
+    if "-o" not in argv and "--owner" not in argv:
+        argv += ["-o", _id]
+
+    printt("[run-script]", "about to run this script:\n", str(["python3"] + argv))
 
     try:
         env = os.environ.copy()
