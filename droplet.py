@@ -261,6 +261,7 @@ def script_login(instance):
     if instance in _scripts:
         raise Exception("instance-already-exists")
     argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
+            "-i", instance, "-m", instance,
             "-g", "-c", "-di"]
     enable_proxy = _args.allocate_proxy and not (len(_args.allocate_proxy) > 0 and _args.allocate_proxy[0] == "off")
     ap = ["-ap"] + _args.allocate_proxy if enable_proxy else []
@@ -277,6 +278,10 @@ def script_start(instance, arguments):
     if len(arguments) < 2:
         raise Exception("not-enough-script-arguments")
     # adjust other script arguments
+    if "-i" not in arguments and "--instance" not in arguments:
+        arguments += ["-i", instance]
+    if "-m" not in arguments and "--merge" not in arguments:
+        arguments += ["-m", instance]
     if "-rp" not in arguments and "--retry-proxy" not in arguments:
         arguments += ["-rp", "5"]
     if "-s" not in arguments and "--silent" not in arguments:
@@ -361,10 +366,6 @@ def _run_script(argv):
     # if _args.allocate_proxy:
     #     if "-ap" not in argv and "--allocate-proxy" not in argv:
     #         argv += ["-ap"] + _args.allocate_proxy
-    if "-i" not in argv and "--instance" not in argv:
-        argv += ["-i", instance]
-    if "-m" not in argv and "--merge" not in argv:
-        argv += ["-m", instance]
     if "-o" not in argv and "--owner" not in argv:
         argv += ["-o", _id]
 
