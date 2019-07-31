@@ -255,7 +255,8 @@ def droplet_restart_system():
     #
     #   shutdown droplet
     #
-    threading.Timer(DEFAULT_RESTART_SYSTEM_DELAY, _do_restart_operating_system).start()
+    _do_restart_operating_system()
+    # threading.Timer(DEFAULT_RESTART_SYSTEM_DELAY, _do_restart_operating_system).start()
 
 
 def script_login(instance):
@@ -468,6 +469,11 @@ def _do_restart_droplet_service():
 
 def _do_restart_operating_system():
     _do_exit_clean_up()
+    threading.Timer(DEFAULT_RESTART_SYSTEM_DELAY, _system_reboot).start()
+    # os.system("reboot")
+
+
+def _system_reboot():
     os.system("reboot")
 
 
