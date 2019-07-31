@@ -266,6 +266,7 @@ def set_selenium_local_session_patch(self):
                     if allocate_proxy_failed_count == 3:
                         InstaPy.env.event("SELENIUM", "ALLOCATE-PROXY-FAILED")
                         exit(0)
+                    # InstaPy.env.event("SELENIUM", "PROXY-ALLOCATED", {"proxy": proxy["string"]})
                     InstaPy.super_print("[selenium] proxy allocated:\n%s\n"
                                         "%d current-clients, %d failed-attempts, %d history-connections" %
                                         (proxy["string"], proxy["clientsCount"],
@@ -277,6 +278,7 @@ def set_selenium_local_session_patch(self):
                     # latest = InstaPy.query_latest({"proxy": proxy_string})
                     latest = InstaPy.query_latest1(["queryProxy"])
                     proxy_string = latest["queryProxy"]
+                    # InstaPy.env.event("SELENIUM", "PROXY-ASSIGNED", {"proxy": proxy_string})
                 # get a new proxy from shell
                 else:
                     proxy_string = input("input proxy-string:")

@@ -184,6 +184,7 @@ def execute(action_type, target, ready, action):
         # re-start selenium and re-login
         if isinstance(e, TaskActionTimeout):
             env.event("TASK", "RESTARTING-SELENIUM")
+            env.event("SELENIUM", "SESSION-QUITTING", {"proxy": env._proxy_in_use, "signal": "task timed out"})
             session.set_selenium_local_session()
             session.login()
 
