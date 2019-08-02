@@ -256,7 +256,7 @@ def set_selenium_local_session_patch(self):
                     proxy = {}
                     allocate_proxy_failed_count = 0
                     while allocate_proxy_failed_count < 3:
-                        proxy = self.proxypool.allocate_proxy(group, tag, proxy_string)
+                        proxy = self.proxypool.allocate_proxy(group, tag, None)  # , proxy_string)
                         if "string" not in proxy:
                             allocate_proxy_failed_count += 1
                             InstaPy.super_print("[selenium] wait 3 seconds before another attempt of proxy allocation")
