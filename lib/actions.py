@@ -4,7 +4,7 @@ import sys
 import signal
 from . import environments as env
 
-TASK_ACTION_TIMEOUT = 60
+TASK_ACTION_TIMEOUT = 120
 
 
 def register_handlers():
@@ -185,6 +185,7 @@ def execute(action_type, target, ready, action):
         if isinstance(e, TaskActionTimeout):
             env.event("TASK", "RESTARTING-SELENIUM")
             env.event("SELENIUM", "SESSION-QUITTING", {"proxy": env._proxy_in_use, "signal": "task timed out"})
+            session.browser.quit()
             session.set_selenium_local_session()
             session.login()
 

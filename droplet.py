@@ -527,8 +527,8 @@ def _stop_script_by_instance(instance):
         # process.kill()
         # process.terminate()
         # os.kill(process.pid, signal.SIGINT)
-        _kill_all_child_processes(process.pid)
         process.send_signal(signal.SIGINT)
+        # _kill_all_child_processes(process.pid)
         _scripts.pop(instance, None)
         # argv = ["login.py", "-s", "-q", "-ap", "-i", instance]
         # return run_script(argv, instance)

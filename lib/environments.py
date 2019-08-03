@@ -1033,11 +1033,15 @@ def track_follower_count(session, gap=DEFAULT_FOLLOWER_TRACKING_GAP):
 
 
 def kill_all_child_processes():
-    log("killing all child processes...")
-    parent = psutil.Process()
-    for child in parent.children(recursive=True):  # or parent.children() for recursive=False
-        child.kill()
+    log("closing browser...")
+    # parent = psutil.Process()
+    # for child in parent.children(recursive=True):  # or parent.children() for recursive=False
+    #     child.kill()
     # parent.kill()
+    try:
+        _session.browser.quit()
+    except:
+        pass
 
 
 # as signal handlers
