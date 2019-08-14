@@ -266,7 +266,7 @@ def script_login(instance):
         raise Exception("instance-already-exists")
     argv = ["login.py", "-nc", "-q", "-s", "-rc", "-rp", "-rl", "2",
             "-i", instance, "-m", instance,
-            "-g", "-c", "-di"]
+            "-g", "-di"]  # , "-c"]
     enable_proxy = _args.allocate_proxy and not (len(_args.allocate_proxy) > 0 and _args.allocate_proxy[0] == "off")
     ap = ["-ap"] + _args.allocate_proxy if enable_proxy else []
     return _run_script(argv + ap)
