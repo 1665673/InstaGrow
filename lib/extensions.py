@@ -71,3 +71,16 @@ def create_proxy_extension(proxy):
         zp.writestr("background.js", background_js)
 
     return pluginfile
+
+
+def create_firefox_extension():
+    ext_path = os.path.abspath("firefox/hide_selenium_extension")
+    # safe into assets folder
+    zip_file = os.path.abspath("assets/firefox_extensions/hide_selenium.xpi")
+
+    files = ["manifest.json", "content.js", "arrive.js"]
+    with zipfile.ZipFile(zip_file, "w", zipfile.ZIP_DEFLATED, False) as zipf:
+        for file in files:
+            zipf.write(ext_path + "/" + file, file)
+
+    return zip_file

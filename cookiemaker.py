@@ -7,7 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from dotenv import load_dotenv, find_dotenv
 import json
-from lib.proxy_extension import create_proxy_extension
+from lib import extensions
 
 load_dotenv(find_dotenv())
 SERVER = os.getenv("SERVER") if os.getenv("SERVER") else "https://admin.socialgrow.live"
@@ -33,7 +33,7 @@ def main():
                                                     proxy[3],
                                                     proxy[0],
                                                     proxy[1])
-            proxy_chrome_extension = create_proxy_extension(proxy_string)
+            proxy_chrome_extension = extensions.create_proxy_extension(proxy_string)
             proxy_chrome_extension = "{0}/{1}".format(os.getcwd(), proxy_chrome_extension)
             chrome_options.add_extension(proxy_chrome_extension)
         browser = webdriver.Chrome(executable_path=DRIVER_CHROME,
@@ -53,10 +53,15 @@ def main():
                                            int(proxy[1]))
         browser = webdriver.Firefox(executable_path=DRIVER_FIREFOX,
                                     firefox_profile=firefox_profile)
+
         if proxy and proxy[2]:
             firefox_proxy_authentication(browser, proxy[2], proxy[3])
 
+        # add extenions to hide selenium
+        browser.install_addon(extensions.create_firefox_extension(), temporary=True)
+
     # go to instagram login page
+    browser.set_window_size(375, 812)  # iphone X
     browser.get("https://www.instagram.com/accounts/login/")
 
     while input("enter 'r' when ready to upload cookies: ") != 'r':

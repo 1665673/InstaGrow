@@ -3,7 +3,8 @@ import sys
 from contextlib import contextmanager
 from . import environments as env
 from . import proxypool
-from .proxy_extension import create_proxy_extension
+# from .proxy_extension import create_proxy_extension
+from . import extensions
 
 
 #
@@ -40,7 +41,7 @@ def apply():
 
     sys.modules[
         'instapy.browser'].set_selenium_local_session.__code__ = set_selenium_local_session_browser_patch.__code__
-    sys.modules['instapy.browser'].create_proxy_extension = create_proxy_extension
+    sys.modules['instapy.browser'].extensions = extensions
 
     sys.modules['instapy.file_manager'].get_workspace.__code__ = get_workspace.__code__
     sys.modules['instapy.file_manager'].get_chromedriver_location.__code__ = get_chromedriver_location.__code__
@@ -421,6 +422,9 @@ def set_selenium_local_session_browser_patch(proxy_address,
                                  proxy_username,
                                  proxy_password)
 
+        # add extenions to hide selenium
+        browser.install_addon(extensions.create_firefox_extension(), temporary=True)
+
     else:
         chromedriver_location = get_chromedriver_location()
         # print(chromedriver_location)
@@ -469,7 +473,7 @@ def set_selenium_local_session_browser_patch(proxy_address,
                                              proxy_password,
                                              proxy_address,
                                              proxy_port)
-            proxy_chrome_extension = create_proxy_extension(proxy)
+            proxy_chrome_extension = extensions.create_proxy_extension(proxy)
             import os
             proxy_chrome_extension = "{0}/{1}".format(os.getcwd(), proxy_chrome_extension)
 
@@ -513,6 +517,9 @@ def set_selenium_local_session_browser_patch(proxy_address,
             return browser, err_msg
 
     browser.implicitly_wait(page_delay)
+
+    # set window size to iphone X
+    browser.set_window_size(375, 812)
 
     # message = "Session started!"
     # highlight_print('browser', message, "initialization", "info", logger)
